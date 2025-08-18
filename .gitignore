@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache_/
+*.py[cod]
+*$py.class
+
+*.pyc
+
+# Environments
+.env
+.venv
+
+#db
+*.db
+
+# Hidden directories and files
+.*/
+.env
