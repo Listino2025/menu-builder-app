@@ -20,3 +20,4 @@ __pycache_/
 # Hidden directories and files
 .*/
 .env
+/app/__pycache__
