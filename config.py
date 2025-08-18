@@ -1,9 +1,20 @@
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Carica variabili ambiente
+load_dotenv()
+
+# Fix database URL function
+def get_database_url():
+    db_url = os.environ.get('DATABASE_URL') or 'sqlite:///menubuilder.db'
+    if db_url and db_url.startswith('postgres://'):
+        return db_url.replace('postgres://', 'postgresql://', 1)
+    return db_url
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///menubuilder.db'
+    SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Fix per PostgreSQL su Heroku/Vercel che usa postgres:// invece di postgresql://
@@ -35,15 +46,6 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    
-    def __init__(self):
-        super().__init__()
-        # Fix per URL PostgreSQL in produzione
-        db_url = os.environ.get('DATABASE_URL')
-        if db_url:
-            self.SQLALCHEMY_DATABASE_URI = self.fix_database_url(db_url)
-        else:
-            self.SQLALCHEMY_DATABASE_URI = 'sqlite:///menubuilder.db'
 
 config = {
     'development': DevelopmentConfig,
