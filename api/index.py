@@ -4,6 +4,13 @@ import sys
 # Aggiungi la directory root al path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Import dotenv se disponibile (in locale)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from app import create_app
 
 # Fix per PostgreSQL URL su Vercel
