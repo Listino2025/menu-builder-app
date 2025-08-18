@@ -18,8 +18,5 @@ db_url = os.environ.get('DATABASE_URL')
 if db_url and db_url.startswith('postgres://'):
     os.environ['DATABASE_URL'] = db_url.replace('postgres://', 'postgresql://', 1)
 
+# Crea l'app Flask
 app = create_app()
-
-# Per Vercel
-def handler(request):
-    return app
