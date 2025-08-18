@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Ingrediente - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-pencil me-2 text-primary"></i>Modifica Ingrediente
+                    </h1>
+                    <p class="text-muted mb-0">Aggiorna le informazioni dell'ingrediente</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.ingredients') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Torna agli Ingredienti
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Informazioni Ingrediente
+                    </h5>
+                    <small class="text-muted">ID: {{ ingredient.id }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Nome Ingrediente *</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ ingredient.name }}" required>
+                                <div class="invalid-feedback">
+                                    Inserisci il nome dell'ingrediente.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="wrin_code" class="form-label">Codice WRIN</label>
+                                <input type="text" class="form-control" id="wrin_code" name="wrin_code" 
+                                       value="{{ ingredient.wrin_code or '' }}">
+                                <small class="text-muted">Opzionale - codice identificativo</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label">Categoria *</label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="">Seleziona categoria...</option>
+                                    {% for key, value in categories.items() %}
+                                    <option value="{{ key }}" {{ 'selected' if key == ingredient.category else '' }}>
+                                        {{ value }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">
+                                    Seleziona una categoria.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="temperature_zone" class="form-label">Zona Temperatura</label>
+                                <select class="form-select" id="temperature_zone" name="temperature_zone">
+                                    <option value="">Seleziona zona...</option>
+                                    {% for key, value in temp_zones.items() %}
+                                    <option value="{{ key }}" {{ 'selected' if key == ingredient.temperature_zone else '' }}>
+                                        {{ value }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Opzionale</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="price_per_unit" class="form-label">Prezzo per Unità *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" class="form-control" id="price_per_unit" name="price_per_unit" 
+                                           step="0.001" min="0" value="{{ ingredient.price_per_unit }}" required>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Inserisci un prezzo valido.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="unit_type" class="form-label">Tipo Unità *</label>
+                                <select class="form-select" id="unit_type" name="unit_type" required>
+                                    <option value="">Seleziona unità...</option>
+                                    <option value="pieces" {{ 'selected' if ingredient.unit_type == 'pieces' else '' }}>Pezzi</option>
+                                    <option value="kg" {{ 'selected' if ingredient.unit_type == 'kg' else '' }}>Chilogrammi (kg)</option>
+                                    <option value="g" {{ 'selected' if ingredient.unit_type == 'g' else '' }}>Grammi (g)</option>
+                                    <option value="l" {{ 'selected' if ingredient.unit_type == 'l' else '' }}>Litri (l)</option>
+                                    <option value="ml" {{ 'selected' if ingredient.unit_type == 'ml' else '' }}>Millilitri (ml)</option>
+                                    <option value="slices" {{ 'selected' if ingredient.unit_type == 'slices' else '' }}>Fette</option>
+                                    <option value="portions" {{ 'selected' if ingredient.unit_type == 'portions' else '' }}>Porzioni</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Seleziona il tipo di unità.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Metadata -->
+                        {% if ingredient.creator %}
+                        <div class="alert alert-light">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-1"></i>Informazioni Aggiuntive
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Creato da:</strong> {{ ingredient.creator.username }}<br>
+                                        <strong>Data creazione:</strong> {{ ingredient.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Ultimo aggiornamento:</strong> Ora<br>
+                                        <strong>Stato:</strong> <span class="badge bg-success">Attivo</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>Salva Modifiche
+                            </button>
+                            <a href="{{ url_for('main.ingredients') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Annulla
+                            </a>
+                            {% if current_user.is_manager() %}
+                            <button type="button" class="btn btn-outline-danger ms-auto" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="bi bi-trash me-2"></i>Elimina
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if current_user.is_manager() %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Conferma Eliminazione
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare l'ingrediente <strong>"{{ ingredient.name }}"</strong>?</p>
+                <div class="alert alert-warning">
+                    <small>
+                        <i class="bi bi-warning me-1"></i>
+                        Questa azione non può essere annullata. L'ingrediente non sarà più disponibile per nuovi prodotti.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form method="POST" action="{{ url_for('main.delete_ingredient', id=ingredient.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Elimina Definitivamente
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Price formatting
+document.getElementById('price_per_unit').addEventListener('input', function(e) {
+    let value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+        // Could add real-time preview here
+    }
+});
+
+// Track changes
+let originalFormData = new FormData(document.querySelector('form'));
+let hasChanges = false;
+
+document.querySelector('form').addEventListener('input', function() {
+    hasChanges = true;
+});
+
+// Warn about unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// Don't warn when submitting
+document.querySelector('form').addEventListener('submit', function() {
+    hasChanges = false;
+});
+</script>
+{% endblock %}

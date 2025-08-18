@@ -1,0 +1,116 @@
+{
+  "name": "Menu Builder",
+  "short_name": "MenuBuilder",
+  "description": "Crea panini e menu personalizzati con analisi dei costi",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#28A745",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "it",
+  "categories": ["business", "food", "productivity"],
+  "screenshots": [
+    {
+      "src": "/static/icons/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/static/icons/screenshot-desktop.png", 
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/static/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-96x96.png",
+      "sizes": "96x96", 
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Crea Panino",
+      "short_name": "Nuovo Panino",
+      "description": "Crea un nuovo panino personalizzato",
+      "url": "/products/sandwich/new",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-sandwich.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Crea Menu", 
+      "short_name": "Nuovo Menu",
+      "description": "Crea un nuovo menu",
+      "url": "/products/menu/new",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-menu.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics", 
+      "description": "Visualizza dashboard analytics",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-analytics.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}

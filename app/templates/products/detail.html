@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.products') }}">Prodotti</a></li>
+                            <li class="breadcrumb-item active">{{ product.name }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-{{ 'burger' if product.product_type == 'sandwich' else 'collection' }} me-2 text-primary"></i>
+                        {{ product.name }}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {{ product.product_type.title() }} - Creato {{ product.created_at.strftime('%d/%m/%Y alle %H:%M') }}
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('main.edit_product', id=product.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i>Modifica
+                    </a>
+                    <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Torna ai Prodotti
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Product Info Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Informazioni Prodotto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted small">Tipo</label>
+                            <div class="fw-medium">
+                                <span class="badge bg-{{ 'primary' if product.product_type == 'sandwich' else 'success' }}">
+                                    {{ product.product_type.title() }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted small">Codice</label>
+                            <div class="fw-medium">{{ product.product_code or '-' }}</div>
+                        </div>
+                    </div>
+                    
+                    {% if product.description %}
+                    <div class="mb-3">
+                        <label class="text-muted small">Descrizione</label>
+                        <div class="fw-medium">{{ product.description }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted small">Stato</label>
+                            <div class="fw-medium">
+                                <span class="badge bg-{{ 'success' if product.is_active else 'secondary' }}">
+                                    {{ 'Attivo' if product.is_active else 'Inattivo' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted small">Creato da</label>
+                            <div class="fw-medium">{{ product.created_by.username if product.created_by else 'Sistema' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cost Analysis Card -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calculator me-2"></i>Analisi Economica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if product.product_type == 'menu' %}
+                    <!-- Menu Cost Breakdown -->
+                    <div class="mb-3">
+                        <label class="text-muted small">Breakdown Costi</label>
+                        <div class="cost-breakdown">
+                            {% set sandwich_cost = (product.sandwich.total_cost|float) if product.sandwich and product.sandwich.total_cost else 0.0 %}
+                            {% set fries_cost = 2.50 if product.fries_size == "small" else 3.00 if product.fries_size == "medium" else 3.50 if product.fries_size == "large" else 0.0 %}
+                            {% set drink_cost = 1.50 if product.drink_size == "small" else 2.00 if product.drink_size == "medium" else 2.50 if product.drink_size == "large" else 0.0 %}
+                            {% set calculated_total = sandwich_cost + fries_cost + drink_cost %}
+                            
+                            {% if product.sandwich %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>{{ product.sandwich.name }}:</small>
+                                <small class="fw-medium">€{{ "%.3f"|format(sandwich_cost) }}</small>
+                            </div>
+                            {% endif %}
+                            {% if product.fries_size %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>Patatine {{ product.fries_size.title() }}:</small>
+                                <small class="fw-medium">€{{ "%.3f"|format(fries_cost) }}</small>
+                            </div>
+                            {% endif %}
+                            {% if product.drink_size %}
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>Bibita {{ product.drink_size.title() }}:</small>
+                                <small class="fw-medium">€{{ "%.3f"|format(drink_cost) }}</small>
+                            </div>
+                            {% endif %}
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between">
+                                <small class="fw-bold">Totale Calcolato:</small>
+                                <small class="fw-bold text-primary">€{{ "%.3f"|format(calculated_total) }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Costo Totale</label>
+                        {% set display_cost = calculated_total if calculated_total > 0 else (product.total_cost|float if product.total_cost else 0.0) %}
+                        <div class="h4 mb-0">€{{ "%.3f"|format(display_cost) }}</div>
+                    </div>
+                    {% else %}
+                    <!-- Regular Product Cost -->
+                    <div class="mb-3">
+                        <label class="text-muted small">Costo Totale</label>
+                        <div class="h4 mb-0">€{{ "%.3f"|format(product.total_cost or 0) }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if product.selling_price %}
+                    <div class="mb-3">
+                        <label class="text-muted small">Prezzo di Vendita</label>
+                        <div class="h4 mb-0">€{{ "%.2f"|format(product.selling_price) }}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="text-muted small">Profitto Lordo</label>
+                        {% if product.product_type == 'menu' %}
+                            {% set calculated_profit = (product.selling_price|float) - display_cost %}
+                            <div class="h4 mb-0 text-{{ 'success' if calculated_profit > 0 else 'danger' }}">
+                                €{{ "%.2f"|format(calculated_profit) }}
+                            </div>
+                        {% else %}
+                            <div class="h4 mb-0 text-{{ 'success' if product.gross_profit and product.gross_profit > 0 else 'danger' }}">
+                                €{{ "%.2f"|format(product.gross_profit or 0) }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="text-muted small">Margine</label>
+                        {% if product.product_type == 'menu' %}
+                            {% set calculated_margin = (calculated_profit / (product.selling_price|float) * 100) if product.selling_price and (product.selling_price|float) > 0 else 0 %}
+                            <div class="h4 mb-0 text-{{ 'success' if calculated_margin > 0 else 'danger' }}">
+                                {{ "%.1f"|format(calculated_margin) }}%
+                            </div>
+                        {% else %}
+                            <div class="h4 mb-0 text-{{ 'success' if product.gross_profit_percent and product.gross_profit_percent > 0 else 'danger' }}">
+                                {{ "%.1f"|format(product.gross_profit_percent or 0) }}%
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted">
+                        <i class="bi bi-currency-euro display-4"></i>
+                        <p class="mt-2">Prezzo di vendita non impostato</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ingredients List -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul me-2"></i>
+                        {% if product.product_type == 'menu' %}
+                            Composizione Menu
+                        {% else %}
+                            Ingredienti
+                        {% endif %}
+                        {% if product.product_type == 'menu' and product.sandwich %}
+                            <span class="badge bg-secondary ms-2">{{ product.sandwich.ingredients.count() }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary ms-2">{{ product.ingredients.count() }}</span>
+                        {% endif %}
+                    </h5>
+                    <div class="text-muted small">
+                        {% if product.product_type == 'menu' %}
+                            Ingredienti del sandwich base + extras
+                        {% else %}
+                            Ordinati per sequenza di preparazione
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if product.product_type == 'menu' %}
+                        {% if product.sandwich and product.sandwich.ingredients.count() > 0 %}
+                        <!-- Sandwich Ingredients -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="bi bi-burger me-2"></i>{{ product.sandwich.name }}
+                            </h6>
+                            <div class="ingredient-layers">
+                                {% for product_ingredient in product.sandwich.ingredients %}
+                                <div class="ingredient-layer mb-3 {{ product_ingredient.ingredient.category.lower() }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div class="ingredient-icon me-3">
+                                                <i class="bi bi-{{ 'bread-slice' if product_ingredient.ingredient.category == 'BASE' else 'egg-fried' if product_ingredient.ingredient.category == 'PROTEIN' else 'circle' if product_ingredient.ingredient.category == 'CHEESE' else 'flower2' if product_ingredient.ingredient.category == 'VEGETABLE' else 'droplet' if product_ingredient.ingredient.category == 'SAUCE' else 'box' }}"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ product_ingredient.ingredient.name }}</div>
+                                                <small class="text-muted">
+                                                    {{ product_ingredient.ingredient.category.replace('_', ' ').title() }}
+                                                    {% if product_ingredient.ingredient.wrin_code %}
+                                                    • WRIN: {{ product_ingredient.ingredient.wrin_code }}
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-medium">
+                                                {{ product_ingredient.quantity }} {{ product_ingredient.ingredient.unit_type }}
+                                            </div>
+                                            <small class="text-muted">
+                                                €{{ "%.3f"|format(product_ingredient.ingredient.price_per_unit) }} / {{ product_ingredient.ingredient.unit_type }}
+                                            </small>
+                                            <div class="text-success small">
+                                                €{{ "%.3f"|format(product_ingredient.quantity * product_ingredient.ingredient.price_per_unit) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Menu Extras -->
+                        <div class="mb-3">
+                            <h6 class="text-warning mb-3">
+                                <i class="bi bi-plus-circle me-2"></i>Extras Menu
+                            </h6>
+                            <div class="row">
+                                {% if product.fries_size %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                        <div>
+                                            <i class="bi bi-plus-circle me-2 text-warning"></i>
+                                            <strong>Patatine {{ product.fries_size.title() }}</strong>
+                                        </div>
+                                        <div class="text-success">
+                                            €{{ "2.50" if product.fries_size == "small" else "3.00" if product.fries_size == "medium" else "3.50" }}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if product.drink_size %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                        <div>
+                                            <i class="bi bi-cup-straw me-2 text-info"></i>
+                                            <strong>Bibita {{ product.drink_size.title() }}</strong>
+                                        </div>
+                                        <div class="text-success">
+                                            €{{ "1.50" if product.drink_size == "small" else "2.00" if product.drink_size == "medium" else "2.50" }}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-exclamation-triangle display-4"></i>
+                            <h6 class="mt-2">Sandwich non trovato</h6>
+                            <p>Il sandwich associato a questo menu non è più disponibile.</p>
+                        </div>
+                        {% endif %}
+                    {% elif product.ingredients.count() > 0 %}
+                    <div class="ingredient-layers">
+                        {% for product_ingredient in product.ingredients %}
+                        <div class="ingredient-layer mb-3 {{ product_ingredient.ingredient.category.lower() }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="ingredient-icon me-3">
+                                        <i class="bi bi-{{ 'bread-slice' if product_ingredient.ingredient.category == 'BASE' else 'egg-fried' if product_ingredient.ingredient.category == 'PROTEIN' else 'circle' if product_ingredient.ingredient.category == 'CHEESE' else 'flower2' if product_ingredient.ingredient.category == 'VEGETABLE' else 'droplet' if product_ingredient.ingredient.category == 'SAUCE' else 'box' }}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium">{{ product_ingredient.ingredient.name }}</div>
+                                        <small class="text-muted">
+                                            {{ product_ingredient.ingredient.category.replace('_', ' ').title() }}
+                                            {% if product_ingredient.ingredient.wrin_code %}
+                                            • WRIN: {{ product_ingredient.ingredient.wrin_code }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-medium">
+                                        {{ product_ingredient.quantity }} {{ product_ingredient.ingredient.unit_type }}
+                                    </div>
+                                    <small class="text-muted">
+                                        €{{ "%.3f"|format(product_ingredient.ingredient.price_per_unit) }} / {{ product_ingredient.ingredient.unit_type }}
+                                    </small>
+                                    <div class="text-success small">
+                                        €{{ "%.3f"|format(product_ingredient.quantity * product_ingredient.ingredient.price_per_unit) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4"></i>
+                        <h6 class="mt-2">Nessun ingrediente</h6>
+                        <p>Questo prodotto non ha ingredienti associati.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Azioni
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('main.edit_product', id=product.id) }}" class="btn btn-primary w-100">
+                                <i class="bi bi-pencil me-2"></i>Modifica Prodotto
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('main.duplicate_product', id=product.id) }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-files me-2"></i>Duplica
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-info w-100" onclick="exportProduct()">
+                                <i class="bi bi-download me-2"></i>Esporta
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-danger w-100" onclick="deleteProduct()">
+                                <i class="bi bi-trash me-2"></i>Elimina
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Alert -->
+<div class="position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 1050;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <strong>Prodotto creato con successo!</strong> {{ product.name }} è stato salvato.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.ingredient-layer {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.ingredient-layer:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ingredient-layer.base {
+    background: linear-gradient(45deg, #deb887 0%, #d2b48c 100%);
+    color: #5d4e37;
+}
+
+.ingredient-layer.protein {
+    background: linear-gradient(45deg, #8b4513 0%, #a0522d 100%);
+    color: white;
+}
+
+.ingredient-layer.cheese {
+    background: linear-gradient(45deg, #ffd700 0%, #ffed4e 100%);
+    color: #b8860b;
+}
+
+.ingredient-layer.vegetable {
+    background: linear-gradient(45deg, #90ee90 0%, #98fb98 100%);
+    color: #228b22;
+}
+
+.ingredient-layer.sauce {
+    background: linear-gradient(45deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+}
+
+.ingredient-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin-bottom: 0.5rem;
+}
+
+.breadcrumb a {
+    color: var(--bs-primary);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .ingredient-layer {
+        padding: 0.75rem;
+    }
+    
+    .ingredient-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+}
+
+.cost-breakdown {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e9ecef;
+}
+
+.cost-breakdown .d-flex {
+    color: #6c757d;
+}
+
+.cost-breakdown .fw-medium {
+    color: #212529;
+}
+</style>
+
+<script>
+// Auto-hide success alert after 5 seconds
+setTimeout(() => {
+    const alert = document.querySelector('.alert-success');
+    if (alert) {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    }
+}, 5000);
+
+function exportProduct() {
+    // Implement product export functionality
+    window.location.href = `/products/{{ product.id }}/export`;
+}
+
+function deleteProduct() {
+    if (confirm('Sei sicuro di voler eliminare questo prodotto? Questa azione non può essere annullata.')) {
+        fetch(`/products/{{ product.id }}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.location.href = '{{ url_for("main.products") }}';
+            } else {
+                alert(data.message || 'Errore durante l\'eliminazione del prodotto');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const message = error.message || 'Errore durante l\'eliminazione del prodotto';
+            alert(message);
+        });
+    }
+}
+</script>
+{% endblock %}

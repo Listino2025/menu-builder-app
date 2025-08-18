@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Utenti - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-people me-2 text-primary"></i>Gestione Utenti
+                    </h1>
+                    <p class="text-muted mb-0">Amministra utenti e permessi del sistema</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="bi bi-person-plus me-1"></i>Aggiungi Utente
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="Cerca utenti..." 
+                       id="user-search" data-search="users">
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <select class="form-select" id="role-filter" data-filter="users">
+                <option value="">Tutti i ruoli</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="user">User</option>
+            </select>
+        </div>
+        <div class="col-lg-3">
+            <select class="form-select" id="status-filter" data-filter="users">
+                <option value="">Tutti gli stati</option>
+                <option value="active">Attivo</option>
+                <option value="inactive">Inattivo</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Elenco Utenti
+                        <span class="badge bg-secondary ms-2">{{ users|length if users else 0 }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Utente</th>
+                                    <th>Email</th>
+                                    <th>Ruolo</th>
+                                    <th>Stato</th>
+                                    <th>Ultimo Accesso</th>
+                                    <th>Registrato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if users %}
+                                    {% for user in users %}
+                                    <tr data-searchable="users" data-filter-value="{{ user.role }}" 
+                                        data-status="{{ 'active' if user.is_active else 'inactive' }}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm me-2">
+                                                    <div class="avatar-circle">
+                                                        {{ user.username[0].upper() }}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-medium">{{ user.username }}</div>
+                                                    <small class="text-muted">{{ user.first_name }} {{ user.last_name }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ user.email or '-' }}</td>
+                                        <td>
+                                            <span class="badge {{ 'bg-danger' if user.role == 'admin' else 'bg-warning' if user.role == 'manager' else 'bg-secondary' }}">
+                                                {{ user.role.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ 'bg-success' if user.is_active else 'bg-secondary' }}">
+                                                {{ 'Attivo' if user.is_active else 'Inattivo' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'Mai' }}
+                                        </td>
+                                        <td>
+                                            {{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" 
+                                                        onclick="editUser({{ user.id }})"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="Modifica utente">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                {% if user.id != current_user.id %}
+                                                <button class="btn btn-outline-warning" 
+                                                        onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|lower }})"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="{{ 'Disattiva' if user.is_active else 'Attiva' }} utente">
+                                                    <i class="bi bi-{{ 'pause' if user.is_active else 'play' }}"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" 
+                                                        onclick="resetPassword({{ user.id }})"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="Reset password">
+                                                    <i class="bi bi-key"></i>
+                                                </button>
+                                                {% if current_user.is_admin() %}
+                                                <button class="btn btn-outline-danger" 
+                                                        onclick="deleteUser({{ user.id }})"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="Elimina utente">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="bi bi-person-x display-4 d-block mb-2"></i>
+                                            Nessun utente trovato
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus me-2"></i>Aggiungi Nuovo Utente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.add_user') }}" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="invalid-feedback">
+                                Inserisci un username valido.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Cognome</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="invalid-feedback">
+                                Inserisci una password.
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="role" class="form-label">Ruolo *</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Seleziona ruolo...</option>
+                                <option value="user">User</option>
+                                <option value="manager">Manager</option>
+                                {% if current_user.is_admin() %}
+                                <option value="admin">Admin</option>
+                                {% endif %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Seleziona un ruolo.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>Crea Utente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+}
+
+.avatar-circle {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #B8001F 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+</style>
+
+<script>
+function editUser(userId) {
+    // Implement user editing functionality
+    window.location.href = `/users/${userId}/edit`;
+}
+
+function toggleUserStatus(userId, isActive) {
+    const action = isActive ? 'disattivare' : 'attivare';
+    
+    if (confirm(`Sei sicuro di voler ${action} questo utente?`)) {
+        fetch(`/users/${userId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ active: !isActive })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Errore durante la modifica dello stato utente');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Errore durante la modifica dello stato utente');
+        });
+    }
+}
+
+function resetPassword(userId) {
+    if (confirm('Sei sicuro di voler reimpostare la password di questo utente?')) {
+        fetch(`/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Password reimpostata. Nuova password: ${data.new_password}`);
+            } else {
+                alert('Errore durante il reset della password');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Errore durante il reset della password');
+        });
+    }
+}
+
+function deleteUser(userId) {
+    if (confirm('Sei sicuro di voler eliminare questo utente? Questa azione non può essere annullata.')) {
+        fetch(`/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Errore durante l\'eliminazione dell\'utente');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Errore durante l\'eliminazione dell\'utente');
+        });
+    }
+}
+</script>
+{% endblock %}

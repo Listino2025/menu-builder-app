@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card bg-primary text-white rounded p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">Bentornato, {{ current_user.username }}! 👋</h1>
+                        <p class="mb-0 opacity-75">
+                            Ecco la panoramica del tuo menu builder di oggi.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end d-none d-md-block">
+                        <i class="bi bi-speedometer2 display-4 opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-12 col-sm-6 col-lg-3 mb-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body text-center">
+                    <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3">
+                        <i class="bi bi-egg-fried"></i>
+                    </div>
+                    <h3 class="h4 mb-1">{{ kpis.sandwich_count }}</h3>
+                    <p class="text-muted mb-0">Panini Creati</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-sm-6 col-lg-3 mb-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body text-center">
+                    <div class="kpi-icon bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                    <h3 class="h4 mb-1">{{ kpis.menu_count }}</h3>
+                    <p class="text-muted mb-0">Menu Creati</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-sm-6 col-lg-3 mb-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body text-center">
+                    <div class="kpi-icon bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3">
+                        <i class="bi bi-basket"></i>
+                    </div>
+                    <h3 class="h4 mb-1">{{ kpis.total_ingredients }}</h3>
+                    <p class="text-muted mb-0">Ingredienti</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-sm-6 col-lg-3 mb-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body text-center">
+                    <div class="kpi-icon bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-3">
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                    <h3 class="h4 mb-1">€{{ kpis.avg_cost }}</h3>
+                    <p class="text-muted mb-0">Costo Medio</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+    <!-- Recent Activity and Quick Actions -->
+    <div class="row">
+        <div class="col-12 col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Recent Products
+                    </h5>
+                    <a href="{{ url_for('main.products') }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_products %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Type</th>
+                                    <th>Cost</th>
+                                    <th>Profit</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in recent_products %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="product-icon me-2">
+                                                <i class="bi bi-{{ 'burger' if product.product_type == 'sandwich' else 'collection' }} text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ product.name }}</div>
+                                                <small class="text-muted">{{ product.product_code }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'primary' if product.product_type == 'sandwich' else 'success' }}">
+                                            {{ product.product_type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>€{{ "%.2f"|format(product.total_cost) }}</td>
+                                    <td>
+                                        {% if product.gross_profit %}
+                                        <span class="text-{{ 'success' if product.gross_profit > 0 else 'danger' }}">
+                                            €{{ "%.2f"|format(product.gross_profit) }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ product.created_at.strftime('%d/%m/%Y') }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox display-4 text-muted"></i>
+                        <h6 class="mt-2">No recent products</h6>
+                        <p class="text-muted">Start creating some products to see them here.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.create_sandwich') }}" class="btn btn-primary">
+                            <i class="bi bi-burger me-2"></i>Create Sandwich
+                        </a>
+                        <a href="{{ url_for('main.create_menu') }}" class="btn btn-success">
+                            <i class="bi bi-collection me-2"></i>Create Menu
+                        </a>
+                        {% if current_user.is_manager() %}
+                        <a href="{{ url_for('main.create_ingredient') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Add Ingredient
+                        </a>
+                        <a href="{{ url_for('main.import_ingredients') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-upload me-2"></i>Import CSV
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Stats -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>System Info
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        {% if current_user.is_admin() %}
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="h6 mb-0">{{ kpis.total_users }}</div>
+                                <small class="text-muted">Users</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h6 mb-0">{{ current_user.role.title() }}</div>
+                            <small class="text-muted">Your Role</small>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <div class="h6 mb-0">{{ current_user.role.title() }}</div>
+                            <small class="text-muted">Your Role</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+<style>
+.welcome-card {
+    background: linear-gradient(135deg, #006341 0%, #0d8a5a 100%);
+}
+
+.kpi-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.product-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(13, 110, 253, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .kpi-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+    
+    .welcome-card h1 {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

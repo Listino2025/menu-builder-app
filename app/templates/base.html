@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#DA020E">
+    <meta name="description" content="Menu Builder - Crea panini e menu personalizzati con analisi dei costi">
+    
+    <title>{% block title %}Menu Builder{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='icons/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    {% if current_user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="{{ url_for('main.dashboard') }}">
+                <i class="bi bi-burger me-2"></i>Menu Builder
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.ingredients') }}">
+                            <i class="bi bi-basket me-1"></i>Ingredienti
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-plus-circle me-1"></i>Crea
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('main.create_sandwich') }}">
+                                <i class="bi bi-burger me-2"></i>Panino
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.create_menu') }}">
+                                <i class="bi bi-collection me-2"></i>Menu
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.products') }}">
+                            <i class="bi bi-list-ul me-1"></i>Prodotti
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.analytics') }}">
+                            <i class="bi bi-graph-up me-1"></i>Analisi
+                        </a>
+                    </li>
+                    {% if current_user.is_admin() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.users') }}">
+                            <i class="bi bi-people me-1"></i>Utenti
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>{{ current_user.username }}
+                            <span class="badge bg-secondary ms-1">{{ current_user.role }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                                <i class="bi bi-person me-2"></i>Profilo
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
+                                <i class="bi bi-key me-2"></i>Cambia Password
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-nav d-lg-none">
+        <div class="mobile-nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+        <div class="mobile-nav-item">
+            <a href="{{ url_for('main.ingredients') }}" class="mobile-nav-link">
+                <i class="bi bi-basket"></i>
+                <span>Ingredienti</span>
+            </a>
+        </div>
+        <div class="mobile-nav-item">
+            <a href="#" class="mobile-nav-link" data-bs-toggle="modal" data-bs-target="#createModal">
+                <i class="bi bi-plus-circle"></i>
+                <span>Crea</span>
+            </a>
+        </div>
+        <div class="mobile-nav-item">
+            <a href="{{ url_for('main.products') }}" class="mobile-nav-link">
+                <i class="bi bi-list-ul"></i>
+                <span>Prodotti</span>
+            </a>
+        </div>
+        <div class="mobile-nav-item">
+            <a href="{{ url_for('main.analytics') }}" class="mobile-nav-link">
+                <i class="bi bi-graph-up"></i>
+                <span>Analisi</span>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Main Content -->
+    <main class="{% if current_user.is_authenticated %}main-content{% endif %}">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container-fluid mt-3">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' if category == 'info' else 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Create Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createModalLabel">
+                        <i class="bi bi-plus-circle me-2 text-primary"></i>Cosa vuoi creare?
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <a href="{{ url_for('main.create_sandwich') }}" class="btn btn-primary w-100 d-flex align-items-center justify-content-center py-3">
+                                <i class="bi bi-egg-fried me-2 fs-4"></i>
+                                <div class="text-start">
+                                    <div class="fw-bold">Crea Panino</div>
+                                    <small class="opacity-75">Componi un nuovo panino con i tuoi ingredienti</small>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-12">
+                            <a href="{{ url_for('main.create_menu') }}" class="btn btn-success w-100 d-flex align-items-center justify-content-center py-3">
+                                <i class="bi bi-collection me-2 fs-4"></i>
+                                <div class="text-start">
+                                    <div class="fw-bold">Crea Menu</div>
+                                    <small class="opacity-75">Combina panino, patatine e bevande</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Sortable.js for drag & drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    {% if request.endpoint != 'main.create_sandwich' %}
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
+    {% endif %}
+    
+    {% block scripts %}{% endblock %}
+    
+    <!-- PWA Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                })
+                .catch(function(error) {
+                    console.log('ServiceWorker registration failed');
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,912 @@
+{% extends "base.html" %}
+
+{% block title %}Crea Ricetta - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-journal-text me-2 text-primary"></i>Crea Ricetta
+                    </h1>
+                    <p class="text-muted mb-0">Componi la tua ricetta personalizzata con drag & drop</p>
+                </div>
+                <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Torna ai Prodotti
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <form method="POST" id="sandwich-form" class="needs-validation" novalidate>
+        <div class="row">
+            <!-- Ingredients Selector -->
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-basket me-2"></i>Ingredienti
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Search Bar -->
+                        <div class="p-3 border-bottom">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" class="form-control" placeholder="Cerca ingredienti..." 
+                                       id="ingredient-search" data-search="ingredients">
+                            </div>
+                        </div>
+                        
+                        <!-- Category Tabs -->
+                        <div class="ingredient-categories">
+                            <nav class="nav nav-pills nav-fill border-bottom p-2" id="category-tabs">
+                                <button class="nav-link active btn-sm" type="button" data-category="all">Tutti</button>
+                                {% for category in ingredients_by_category.keys() %}
+                                <button class="nav-link btn-sm" type="button" data-category="{{ category }}">
+                                    {{ category.replace('_', ' ').title() }}
+                                </button>
+                                {% endfor %}
+                            </nav>
+                        </div>
+                        
+                        <!-- Ingredients List -->
+                        <div class="ingredients-list p-3" id="ingredients-list" style="max-height: 500px; overflow-y: auto;">
+                            {% for category, ingredients in ingredients_by_category.items() %}
+                            <div class="ingredient-category mb-3" data-category="{{ category }}">
+                                <h6 class="text-muted text-uppercase fw-bold mb-2">
+                                    <i class="bi bi-{{ 'bread-slice' if category == 'BASE' else 'egg-fried' if category == 'PROTEIN' else 'circle' if category == 'CHEESE' else 'flower2' if category == 'VEGETABLE' else 'droplet' if category == 'SAUCE' else 'box' }} me-1"></i>
+                                    {{ category.replace('_', ' ').title() }}
+                                </h6>
+                                {% for ingredient in ingredients %}
+                                <div class="ingredient-item mb-2" 
+                                     data-ingredient-id="{{ ingredient.id }}"
+                                     data-ingredient-name="{{ ingredient.name }}"
+                                     data-ingredient-price="{{ ingredient.price_per_unit }}"
+                                     data-ingredient-unit="{{ ingredient.unit_type }}"
+                                     data-ingredient-category="{{ ingredient.category }}"
+                                     data-searchable="ingredients"
+                                     draggable="true">
+                                    <div class="d-flex align-items-center">
+                                        <div class="drag-handle me-2">
+                                            <i class="bi bi-grip-vertical text-muted"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium">{{ ingredient.name }}</div>
+                                            <small class="text-muted">
+                                                €{{ "%.3f"|format(ingredient.price_per_unit) }} / {{ ingredient.unit_type }}
+                                                {% if ingredient.wrin_code %}
+                                                • {{ ingredient.wrin_code }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary add-ingredient"
+                                                data-ingredient-id="{{ ingredient.id }}">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sandwich Builder -->
+            <div class="col-lg-5 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-stack me-2"></i>Costruttore Ricetta
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Visual Sandwich Preview -->
+                        <div class="sandwich-preview mb-3" id="sandwich-preview">
+                            <div class="sandwich-visual text-center">
+                                <div class="empty-sandwich py-5">
+                                    <i class="bi bi-burger display-4 text-muted"></i>
+                                    <p class="text-muted mt-2">Trascina gli ingredienti qui per costruire la tua ricetta</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Ingredients Builder Area -->
+                        <div class="sandwich-builder" id="sandwich-builder">
+                            <div class="drop-zone text-center p-4">
+                                <i class="bi bi-plus-circle display-6 text-muted"></i>
+                                <p class="text-muted mt-2 mb-0">
+                                    Rilascia gli ingredienti qui o usa il pulsante +
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Build Instructions -->
+                        <div class="alert alert-info mt-3">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-1"></i>Suggerimenti per la Costruzione
+                            </h6>
+                            <ul class="mb-0 small">
+                                <li>Inizia con una base (panino) e aggiungi proteine</li>
+                                <li>Trascina gli ingredienti per riordinare i livelli</li>
+                                <li><strong>Inserisci quantità assolute</strong> (es: 200g, 50ml, 2 pezzi)</li>
+                                <li>Usa i pulsanti +/- per incrementi rapidi</li>
+                                <li>Guarda l'aggiornamento del costo in tempo reale</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Product Details & Cost Calculator -->
+            <div class="col-lg-3 mb-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Dettagli Prodotto
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nome Ricetta *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   placeholder="es. Burger Classico" required>
+                            <div class="invalid-feedback">
+                                Inserisci un nome per la ricetta.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="selling_price" class="form-label">Prezzo di Vendita (€)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input type="number" class="form-control" id="selling_price" name="selling_price" 
+                                       step="0.01" min="0" placeholder="0.00" data-calculate-cost>
+                            </div>
+                            <small class="text-muted">Opzionale - può essere impostato dopo</small>
+                        </div>
+                        
+                        <!-- Hidden ingredient inputs (populated by JavaScript) -->
+                        <div id="ingredient-inputs"></div>
+                    </div>
+                </div>
+                
+                <!-- Cost Calculator -->
+                <div class="card cost-calculator text-white">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-white">
+                            <i class="bi bi-calculator me-2"></i>Analisi Costi
+                        </h6>
+                        
+                        <div class="cost-display" id="total-cost">€0.000</div>
+                        <small class="opacity-75">Costo Totale</small>
+                        
+                        <hr class="my-3 opacity-50">
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="profit-display" id="gross-profit">€0.00</div>
+                                <small class="opacity-75">Profitto Lordo</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="profit-display" id="profit-percentage">0.0%</div>
+                                <small class="opacity-75">Margine</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <small class="opacity-75">
+                                <span id="ingredient-count">0</span> ingredienti selezionati
+                            </small>
+                        </div>
+                        
+                        <!-- Hidden cost inputs for form submission -->
+                        <input type="hidden" id="total_cost" name="total_cost" value="0">
+                        <input type="hidden" id="gross_profit" name="gross_profit" value="0">
+                        <input type="hidden" id="gross_profit_percent" name="gross_profit_percent" value="0">
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary btn-lg" id="save-sandwich">
+                        <i class="bi bi-check-circle me-2"></i>Crea Panino
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearSandwich()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Cancella Tutto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class SandwichComposer {
+    constructor() {
+        this.selectedIngredients = new Map();
+        this.totalCost = 0;
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.setupDragAndDrop();
+        this.setupCategoryTabs();
+    }
+    
+    setupEventListeners() {
+        // Add ingredient buttons
+        document.querySelectorAll('.add-ingredient').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const ingredientId = e.target.closest('.add-ingredient').dataset.ingredientId;
+                this.addIngredient(ingredientId);
+            });
+        });
+        
+        // Search functionality
+        const searchInput = document.getElementById('ingredient-search');
+        searchInput.addEventListener('input', this.debounce(this.searchIngredients.bind(this), 300));
+        
+        // Selling price input
+        const sellingPriceInput = document.getElementById('selling_price');
+        sellingPriceInput.addEventListener('input', this.calculateProfit.bind(this));
+        
+        // Form validation
+        const form = document.getElementById('sandwich-form');
+        form.addEventListener('submit', this.validateAndSubmit.bind(this));
+    }
+    
+    setupDragAndDrop() {
+        // Make ingredient items draggable
+        document.querySelectorAll('.ingredient-item').forEach(item => {
+            item.addEventListener('dragstart', this.handleDragStart.bind(this));
+        });
+        
+        // Setup drop zone
+        const sandwichBuilder = document.getElementById('sandwich-builder');
+        sandwichBuilder.addEventListener('dragover', this.handleDragOver.bind(this));
+        sandwichBuilder.addEventListener('drop', this.handleDrop.bind(this));
+        
+        // Setup sortable for reordering
+        if (typeof Sortable !== 'undefined') {
+            new Sortable(sandwichBuilder, {
+                animation: 150,
+                handle: '.drag-handle',
+                onEnd: this.updateVisualPreview.bind(this)
+            });
+        }
+    }
+    
+    setupCategoryTabs() {
+        document.querySelectorAll('[data-category]').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterByCategory(e.target.dataset.category);
+                
+                // Update active tab
+                document.querySelectorAll('[data-category]').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+    }
+    
+    handleDragStart(e) {
+        e.dataTransfer.setData('text/plain', e.target.dataset.ingredientId);
+        e.dataTransfer.effectAllowed = 'copy';
+    }
+    
+    handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+    
+    handleDrop(e) {
+        e.preventDefault();
+        const ingredientId = e.dataTransfer.getData('text/plain');
+        this.addIngredient(ingredientId);
+    }
+    
+    addIngredient(ingredientId) {
+        const ingredientElement = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
+        if (!ingredientElement) return;
+        
+        const ingredient = {
+            id: ingredientId,
+            name: ingredientElement.dataset.ingredientName,
+            price: parseFloat(ingredientElement.dataset.ingredientPrice),
+            unit: ingredientElement.dataset.ingredientUnit,
+            category: ingredientElement.dataset.ingredientCategory
+        };
+        
+        // Check if already added
+        if (this.selectedIngredients.has(ingredientId)) {
+            this.showAlert('Ingredient already added to sandwich', 'warning');
+            return;
+        }
+        
+        this.selectedIngredients.set(ingredientId, { 
+            ...ingredient, 
+            quantity: 1, 
+            originalUnit: ingredient.unit,
+            displayUnit: ingredient.unit 
+        });
+        this.renderSandwichLayer(ingredient);
+        this.updateCostCalculation();
+        this.updateFormInputs();
+        this.updateVisualPreview();
+        
+        // Visual feedback
+        ingredientElement.classList.add('selected');
+        this.showAlert(`${ingredient.name} added to sandwich`, 'success', 2000);
+    }
+    
+    removeIngredient(ingredientId) {
+        if (this.selectedIngredients.has(ingredientId)) {
+            const ingredient = this.selectedIngredients.get(ingredientId);
+            this.selectedIngredients.delete(ingredientId);
+            
+            // Remove from DOM
+            document.querySelector(`#layer-${ingredientId}`)?.remove();
+            
+            // Update visual state
+            const ingredientElement = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
+            ingredientElement?.classList.remove('selected');
+            
+            this.updateCostCalculation();
+            this.updateFormInputs();
+            this.updateVisualPreview();
+            
+            this.showAlert(`${ingredient.name} removed from sandwich`, 'info', 2000);
+        }
+    }
+    
+    renderSandwichLayer(ingredient) {
+        const sandwichBuilder = document.getElementById('sandwich-builder');
+        
+        // Remove empty state
+        const dropZone = sandwichBuilder.querySelector('.drop-zone');
+        if (dropZone) dropZone.remove();
+        
+        const layer = document.createElement('div');
+        layer.className = `sandwich-layer ${ingredient.category.toLowerCase()}`;
+        layer.id = `layer-${ingredient.id}`;
+        layer.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="drag-handle me-2">
+                        <i class="bi bi-grip-vertical"></i>
+                    </div>
+                    <div>
+                        <div class="fw-medium">${ingredient.name}</div>
+                        <small class="text-muted">€${ingredient.price.toFixed(3)} / ${ingredient.unit}</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="quantity-control d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger quantity-decrease" 
+                                data-ingredient-id="${ingredient.id}">-</button>
+                        <input type="number" class="form-control form-control-sm text-center quantity-input" 
+                               value="1" 
+                               step="0.1" 
+                               min="0.1"
+                               style="width: 70px; -webkit-appearance: none; -moz-appearance: textfield;"
+                               data-ingredient-id="${ingredient.id}">
+                        <select class="form-select form-select-sm unit-selector" 
+                                data-ingredient-id="${ingredient.id}"
+                                data-current-unit="${ingredient.unit}"
+                                style="width: 80px; font-size: 0.75rem;">
+                            ${this.getUnitOptions(ingredient.unit)}
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-success quantity-increase"
+                                data-ingredient-id="${ingredient.id}">+</button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger">×</button>
+                </div>
+            </div>
+        `;
+        
+        sandwichBuilder.appendChild(layer);
+        
+        // Add quantity change listener
+        const quantityInput = layer.querySelector('.quantity-input');
+        quantityInput.addEventListener('input', () => {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            if (this.selectedIngredients.has(ingredient.id)) {
+                this.selectedIngredients.get(ingredient.id).quantity = quantity;
+                this.updateCostCalculation();
+                this.updateFormInputs();
+            }
+        });
+        
+        // Add +/- button listeners
+        const decreaseBtn = layer.querySelector('.quantity-decrease');
+        const increaseBtn = layer.querySelector('.quantity-increase');
+        const removeBtn = layer.querySelector('.btn-danger');
+        
+        decreaseBtn.addEventListener('click', () => {
+            const currentValue = parseFloat(quantityInput.value) || 0;
+            const newValue = Math.max(0.1, currentValue - 0.1);
+            quantityInput.value = newValue.toFixed(1);
+            if (this.selectedIngredients.has(ingredient.id)) {
+                this.selectedIngredients.get(ingredient.id).quantity = newValue;
+                this.updateCostCalculation();
+                this.updateFormInputs();
+            }
+        });
+        
+        increaseBtn.addEventListener('click', () => {
+            const currentValue = parseFloat(quantityInput.value) || 0;
+            const newValue = currentValue + 0.1;
+            quantityInput.value = newValue.toFixed(1);
+            if (this.selectedIngredients.has(ingredient.id)) {
+                this.selectedIngredients.get(ingredient.id).quantity = newValue;
+                this.updateCostCalculation();
+                this.updateFormInputs();
+            }
+        });
+        
+        removeBtn.addEventListener('click', () => {
+            this.removeIngredient(ingredient.id);
+        });
+        
+        // Add unit selector change listener
+        const unitSelector = layer.querySelector('.unit-selector');
+        unitSelector.addEventListener('change', () => {
+            this.handleUnitConversion(ingredient.id, unitSelector.value);
+        });
+    }
+    
+    getUnitOptions(currentUnit) {
+        const unitGroups = {
+            weight: ['kg', 'hg', 'dag', 'g', 'dg'],
+            volume: ['l', 'dl', 'cl', 'ml'],
+            count: ['pieces', 'slices', 'portions']
+        };
+        
+        // Determine which group the current unit belongs to
+        let availableUnits = [];
+        if (unitGroups.weight.includes(currentUnit)) {
+            availableUnits = unitGroups.weight;
+        } else if (unitGroups.volume.includes(currentUnit)) {
+            availableUnits = unitGroups.volume;
+        } else {
+            availableUnits = unitGroups.count;
+        }
+        
+        return availableUnits.map(unit => 
+            `<option value="${unit}" ${unit === currentUnit ? 'selected' : ''}>${unit}</option>`
+        ).join('');
+    }
+    
+    handleUnitConversion(ingredientId, newUnit) {
+        const layer = document.querySelector(`#layer-${ingredientId}`);
+        const quantityInput = layer.querySelector('.quantity-input');
+        const currentQuantity = parseFloat(quantityInput.value) || 0;
+        const currentUnit = layer.querySelector('.unit-selector').getAttribute('data-current-unit') || 
+                           this.selectedIngredients.get(ingredientId).unit;
+        
+        // Convert quantity to new unit
+        const convertedQuantity = this.convertQuantity(currentQuantity, currentUnit, newUnit);
+        quantityInput.value = convertedQuantity;
+        
+        // Update the stored ingredient unit and quantity
+        if (this.selectedIngredients.has(ingredientId)) {
+            this.selectedIngredients.get(ingredientId).quantity = convertedQuantity;
+            this.selectedIngredients.get(ingredientId).displayUnit = newUnit;
+        }
+        
+        // Store current unit for future conversions
+        layer.querySelector('.unit-selector').setAttribute('data-current-unit', newUnit);
+        
+        this.updateCostCalculation();
+        this.updateFormInputs();
+    }
+    
+    convertQuantity(quantity, fromUnit, toUnit) {
+        if (fromUnit === toUnit) return quantity;
+        
+        // Weight conversions (all to grams, then to target)
+        const weightToGrams = {
+            'kg': 1000,
+            'hg': 100,
+            'dag': 10,
+            'g': 1,
+            'dg': 0.1
+        };
+        
+        // Volume conversions (all to milliliters, then to target)
+        const volumeToMl = {
+            'l': 1000,
+            'dl': 100,
+            'cl': 10,
+            'ml': 1
+        };
+        
+        // Convert weight units
+        if (weightToGrams[fromUnit] && weightToGrams[toUnit]) {
+            const grams = quantity * weightToGrams[fromUnit];
+            return parseFloat((grams / weightToGrams[toUnit]).toFixed(3));
+        }
+        
+        // Convert volume units
+        if (volumeToMl[fromUnit] && volumeToMl[toUnit]) {
+            const ml = quantity * volumeToMl[fromUnit];
+            return parseFloat((ml / volumeToMl[toUnit]).toFixed(3));
+        }
+        
+        // No conversion needed for count units (pieces, slices, portions)
+        return quantity;
+    }
+    
+    updateCostCalculation() {
+        this.totalCost = 0;
+        
+        this.selectedIngredients.forEach(ingredient => {
+            // Convert displayed quantity back to original unit for cost calculation
+            const originalQuantity = this.convertQuantity(
+                ingredient.quantity, 
+                ingredient.displayUnit || ingredient.unit, 
+                ingredient.originalUnit || ingredient.unit
+            );
+            const cost = ingredient.price * originalQuantity;
+            this.totalCost += cost;
+            // Cost calculation completed
+        });
+        
+        document.getElementById('total-cost').textContent = `€${this.totalCost.toFixed(3)}`;
+        document.getElementById('ingredient-count').textContent = this.selectedIngredients.size;
+        
+        this.calculateProfit();
+    }
+    
+    calculateProfit() {
+        const sellingPrice = parseFloat(document.getElementById('selling_price').value) || 0;
+        const grossProfit = sellingPrice - this.totalCost;
+        const profitPercentage = sellingPrice > 0 ? (grossProfit / sellingPrice * 100) : 0;
+        
+        const profitElement = document.getElementById('gross-profit');
+        const percentageElement = document.getElementById('profit-percentage');
+        
+        profitElement.textContent = `€${grossProfit.toFixed(2)}`;
+        profitElement.className = `profit-display ${grossProfit >= 0 ? 'text-white' : 'text-warning'}`;
+        
+        percentageElement.textContent = `${profitPercentage.toFixed(1)}%`;
+        percentageElement.className = `profit-display ${profitPercentage >= 0 ? 'text-white' : 'text-warning'}`;
+        
+        // Update hidden form fields
+        document.getElementById('total_cost').value = this.totalCost.toFixed(3);
+        document.getElementById('gross_profit').value = grossProfit.toFixed(2);
+        document.getElementById('gross_profit_percent').value = profitPercentage.toFixed(2);
+    }
+    
+    updateFormInputs() {
+        const container = document.getElementById('ingredient-inputs');
+        container.innerHTML = '';
+        
+        let index = 0;
+        this.selectedIngredients.forEach((ingredient, id) => {
+            // Convert displayed quantity back to original unit for saving
+            const originalQuantity = this.convertQuantity(
+                ingredient.quantity, 
+                ingredient.displayUnit || ingredient.unit, 
+                ingredient.originalUnit || ingredient.unit
+            );
+            
+            container.innerHTML += `
+                <input type="hidden" name="ingredient_ids[]" value="${id}">
+                <input type="hidden" name="quantities[]" value="${originalQuantity}">
+            `;
+            index++;
+        });
+    }
+    
+    updateVisualPreview() {
+        const preview = document.getElementById('sandwich-preview');
+        const visual = preview.querySelector('.sandwich-visual');
+        
+        if (this.selectedIngredients.size === 0) {
+            visual.innerHTML = `
+                <div class="empty-sandwich py-5 text-center">
+                    <i class="bi bi-burger display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Drag ingredients here to build your sandwich</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let previewHTML = '<div class="sandwich-stack">';
+        
+        // Add bun top
+        previewHTML += '<div class="layer-preview bun">🍞 Bun Top</div>';
+        
+        // Add ingredients in reverse order (top to bottom)
+        const layers = Array.from(document.querySelectorAll('.sandwich-layer')).reverse();
+        layers.forEach(layer => {
+            const category = layer.className.match(/\b(base|protein|cheese|vegetable|sauce)\b/)?.[0] || 'other';
+            const name = layer.querySelector('.fw-medium')?.textContent || '';
+            const emoji = this.getCategoryEmoji(category);
+            
+            previewHTML += `<div class="layer-preview ${category}">${emoji} ${name}</div>`;
+        });
+        
+        // Add bun bottom
+        previewHTML += '<div class="layer-preview bun">🍞 Bun Bottom</div>';
+        previewHTML += '</div>';
+        
+        visual.innerHTML = previewHTML;
+    }
+    
+    getCategoryEmoji(category) {
+        const emojis = {
+            'base': '🍞',
+            'protein': '🥩',
+            'cheese': '🧀',
+            'vegetable': '🥬',
+            'sauce': '🔴',
+            'other': '⚪'
+        };
+        return emojis[category] || '⚪';
+    }
+    
+    searchIngredients(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('.ingredient-item');
+        
+        items.forEach(item => {
+            const name = item.dataset.ingredientName.toLowerCase();
+            const visible = name.includes(searchTerm);
+            item.style.display = visible ? '' : 'none';
+        });
+        
+        // Show/hide categories based on visible items
+        document.querySelectorAll('.ingredient-category').forEach(category => {
+            const visibleItems = category.querySelectorAll('.ingredient-item:not([style*="display: none"])');
+            category.style.display = visibleItems.length > 0 ? '' : 'none';
+        });
+    }
+    
+    filterByCategory(category) {
+        const categories = document.querySelectorAll('.ingredient-category');
+        
+        categories.forEach(cat => {
+            if (category === 'all' || cat.dataset.category === category) {
+                cat.style.display = '';
+            } else {
+                cat.style.display = 'none';
+            }
+        });
+    }
+    
+    validateAndSubmit(e) {
+        // Check if at least one ingredient is selected
+        if (this.selectedIngredients.size === 0) {
+            e.preventDefault();
+            this.showAlert('Please add at least one ingredient to your sandwich', 'error');
+            return false;
+        }
+        
+        // Check for required base ingredient
+        const hasBase = Array.from(this.selectedIngredients.values()).some(ing => 
+            ing.category === 'BASE'
+        );
+        
+        if (!hasBase) {
+            e.preventDefault();
+            this.showAlert('Please add a base (bun) to your sandwich', 'warning');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    showAlert(message, type, duration = 3000) {
+        const alertContainer = document.querySelector('.container-fluid');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        alertContainer.insertBefore(alert, alertContainer.firstChild);
+        
+        if (duration) {
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, duration);
+        }
+    }
+    
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+}
+
+// Initialize composer
+let sandwichComposer;
+document.addEventListener('DOMContentLoaded', () => {
+    sandwichComposer = new SandwichComposer();
+});
+
+// Global functions
+function clearSandwich() {
+    if (confirm('Are you sure you want to clear all ingredients?')) {
+        sandwichComposer.selectedIngredients.clear();
+        document.getElementById('sandwich-builder').innerHTML = `
+            <div class="drop-zone text-center p-4">
+                <i class="bi bi-plus-circle display-6 text-muted"></i>
+                <p class="text-muted mt-2 mb-0">Drop ingredients here or use the + button</p>
+            </div>
+        `;
+        sandwichComposer.updateCostCalculation();
+        sandwichComposer.updateFormInputs();
+        sandwichComposer.updateVisualPreview();
+        
+        // Remove selected state from ingredient items
+        document.querySelectorAll('.ingredient-item.selected').forEach(item => {
+            item.classList.remove('selected');
+        });
+    }
+}
+</script>
+
+<style>
+.sandwich-layer {
+    margin: 0.5rem 0;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+    position: relative;
+    cursor: move;
+}
+
+.sandwich-layer:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sandwich-layer.base {
+    background: linear-gradient(45deg, #deb887 0%, #d2b48c 100%);
+    color: #5d4e37;
+}
+
+.sandwich-layer.protein {
+    background: linear-gradient(45deg, #8b4513 0%, #a0522d 100%);
+    color: white;
+}
+
+.sandwich-layer.cheese {
+    background: linear-gradient(45deg, #ffd700 0%, #ffed4e 100%);
+    color: #b8860b;
+}
+
+.sandwich-layer.vegetable {
+    background: linear-gradient(45deg, #90ee90 0%, #98fb98 100%);
+    color: #228b22;
+}
+
+.sandwich-layer.sauce {
+    background: linear-gradient(45deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+}
+
+.layer-preview {
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.25rem;
+    text-align: center;
+    font-size: 0.9rem;
+    border: 1px solid #dee2e6;
+}
+
+.ingredient-item {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.ingredient-item:hover {
+    border-color: var(--bs-primary);
+    transform: translateX(5px);
+}
+
+.ingredient-item.selected {
+    border-color: var(--bs-primary);
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.drop-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.sandwich-builder.drag-over .drop-zone {
+    border-color: var(--bs-primary);
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.nav-pills .nav-link {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.quantity-input {
+    text-align: center;
+}
+
+.unit-selector {
+    border-left: none !important;
+    border-radius: 0 !important;
+    background-color: #FFC72C;
+    color: #27251F;
+    font-weight: 600;
+    text-align: center;
+}
+
+.unit-selector:focus {
+    border-color: var(--bs-primary);
+    box-shadow: none;
+}
+
+.layer-remove {
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.layer-remove:hover {
+    background: var(--bs-danger);
+    transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+    .sandwich-layer {
+        padding: 0.75rem;
+    }
+    
+    .quantity-input {
+        width: 60px !important;
+    }
+    
+    .nav-pills .nav-link {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.5rem;
+    }
+}
+</style>
+{% endblock %}

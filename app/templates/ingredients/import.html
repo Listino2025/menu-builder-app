@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Importa Ingredienti - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-upload me-2 text-primary"></i>Importa Ingredienti
+                    </h1>
+                    <p class="text-muted mb-0">Carica ingredienti da file CSV</p>
+                </div>
+                <a href="{{ url_for('main.ingredients') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Torna agli Ingredienti
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Upload Form -->
+        <div class="col-12 col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>Carica File CSV
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Seleziona File CSV *</label>
+                            <input type="file" class="form-control" id="file" name="file" 
+                                   accept=".csv" required>
+                            <div class="invalid-feedback">
+                                Seleziona un file CSV valido.
+                            </div>
+                            <small class="text-muted">
+                                Formati supportati: .csv (max 16MB)
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Modalità di Importazione *</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="mode_add" value="add" checked>
+                                <label class="form-check-label" for="mode_add">
+                                    <strong>Aggiungi agli esistenti</strong>
+                                    <div class="text-muted small">Gli ingredienti duplicati verranno aggiornati, quelli nuovi aggiunti</div>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="mode_replace" value="replace">
+                                <label class="form-check-label" for="mode_replace">
+                                    <strong>Sostituisci tutti</strong>
+                                    <div class="text-muted small">Elimina tutti gli ingredienti esistenti e sostituisce con quelli del CSV</div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-1"></i>Istruzioni per l'Importazione
+                            </h6>
+                            <ul class="mb-0 small">
+                                <li>Supporta file CSV con separatori virgola (,) o punto e virgola (;)</li>
+                                <li><strong>Formati standard supportati!</strong> Riconoscimento automatico</li>
+                                <li>Encodings supportati: UTF-8, Windows-1252, ISO-8859-1</li>
+                                <li>La prima riga deve contenere le intestazioni delle colonne</li>
+                                <li><strong>Modalità Aggiungi:</strong> Gli ingredienti esistenti (stesso WRIN/nome) verranno aggiornati</li>
+                                <li><strong>Modalità Sostituisci:</strong> Tutti gli ingredienti attuali verranno eliminati prima dell'import</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            <strong>Attenzione:</strong> La modalità "Sostituisci tutti" eliminerà definitivamente:
+                            <ul class="mb-0 mt-2">
+                                <li><strong>Tutti i prodotti</strong> (panini e menu) che usano gli ingredienti attuali</li>
+                                <li><strong>Tutti gli ingredienti</strong> esistenti nel tuo account</li>
+                            </ul>
+                            <div class="mt-2"><strong>Questa azione non può essere annullata.</strong></div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-2"></i>Importa Ingredienti
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Format Guide -->
+        <div class="col-12 col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-table me-2"></i>Formato CSV Richiesto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Il tuo file CSV deve contenere le seguenti colonne:
+                    </p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Colonna</th>
+                                    <th>Obbligatoria</th>
+                                    <th>Descrizione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>name</code></td>
+                                    <td><span class="badge bg-danger">Sì</span></td>
+                                    <td>Nome ingrediente</td>
+                                </tr>
+                                <tr>
+                                    <td><code>category</code></td>
+                                    <td><span class="badge bg-danger">Sì</span></td>
+                                    <td>Categoria (BASE, PROTEIN, CHEESE, etc.)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>price_per_unit</code></td>
+                                    <td><span class="badge bg-danger">Sì</span></td>
+                                    <td>Prezzo per unità (numero decimale)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>unit_type</code></td>
+                                    <td><span class="badge bg-danger">Sì</span></td>
+                                    <td>Tipo unità (kg, g, pieces, etc.)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>wrin_code</code></td>
+                                    <td><span class="badge bg-secondary">No</span></td>
+                                    <td>Codice WRIN (opzionale)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>temperature_zone</code></td>
+                                    <td><span class="badge bg-secondary">No</span></td>
+                                    <td>Zona temperatura (FROZEN, CHILLED, etc.)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sample Data -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-text me-2"></i>Esempio CSV
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded"><code>{{ sample_data['Sample CSV Format'][0] }}
+{{ sample_data['Sample CSV Format'][1] }}
+{{ sample_data['Sample CSV Format'][2] }}
+{{ sample_data['Sample CSV Format'][3] }}</code></pre>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="downloadSample()">
+                            <i class="bi bi-download me-1"></i>Scarica Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Categories Guide -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-tags me-2"></i>Categorie Supportate
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>BASE</strong></span>
+                                    <span class="text-muted">Pani e basi</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>PROTEIN</strong></span>
+                                    <span class="text-muted">Proteine (carne, pesce, etc.)</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>CHEESE</strong></span>
+                                    <span class="text-muted">Formaggi</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>VEGETABLE</strong></span>
+                                    <span class="text-muted">Verdure e vegetali</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>SAUCE</strong></span>
+                                    <span class="text-muted">Salse e condimenti</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>OTHER</strong></span>
+                                    <span class="text-muted">Altri ingredienti</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toggle warning visibility based on import mode
+document.addEventListener('DOMContentLoaded', function() {
+    const modeRadios = document.querySelectorAll('input[name="import_mode"]');
+    const warningAlert = document.querySelector('.alert-warning');
+    
+    modeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'replace') {
+                warningAlert.style.display = 'block';
+            } else {
+                warningAlert.style.display = 'none';
+            }
+        });
+    });
+    
+    // Initially hide warning since "add" is selected by default
+    warningAlert.style.display = 'none';
+});
+
+function downloadSample() {
+    const csvContent = `wrin_code,name,category,price_per_unit,unit_type,temperature_zone
+BUN001,Panino Regolare,BASE,0.25,pieces,AMBIENT
+BEEF001,Hamburger di Manzo,PROTEIN,2.50,pieces,FROZEN
+CHED001,Formaggio Cheddar,CHEESE,0.30,slices,CHILLED
+LETT001,Lattuga Iceberg,VEGETABLE,0.15,g,CHILLED
+MAYO001,Maionese,SAUCE,0.05,ml,AMBIENT`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'template_ingredienti.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// Form validation and confirmation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                // Check if replace mode is selected and confirm
+                const replaceMode = document.getElementById('mode_replace').checked;
+                if (replaceMode) {
+                    if (!confirm('ATTENZIONE: Stai per eliminare TUTTI gli ingredienti esistenti e sostituirli con quelli del CSV. Questa azione non può essere annullata. Sei sicuro di voler continuare?')) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+                }
+                
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}
