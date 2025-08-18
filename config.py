@@ -6,6 +6,13 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///menubuilder.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Fix per PostgreSQL su Heroku/Vercel che usa postgres:// invece di postgresql://
+    @staticmethod
+    def fix_database_url(url):
+        if url and url.startswith('postgres://'):
+            return url.replace('postgres://', 'postgresql://', 1)
+        return url
+    
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
@@ -28,7 +35,15 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///menubuilder.db'
+    
+    def __init__(self):
+        super().__init__()
+        # Fix per URL PostgreSQL in produzione
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url:
+            self.SQLALCHEMY_DATABASE_URI = self.fix_database_url(db_url)
+        else:
+            self.SQLALCHEMY_DATABASE_URI = 'sqlite:///menubuilder.db'
 
 config = {
     'development': DevelopmentConfig,
