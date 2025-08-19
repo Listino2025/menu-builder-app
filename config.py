@@ -7,8 +7,10 @@ load_dotenv()
 
 # Fix database URL function
 def get_database_url():
-    db_url = os.environ.get('DATABASE_URL') or 'sqlite:///menubuilder.db'
-    if db_url and db_url.startswith('postgres://'):
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        raise ValueError('DATABASE_URL environment variable is required. Please set it to your Supabase PostgreSQL URL.')
+    if db_url.startswith('postgres://'):
         return db_url.replace('postgres://', 'postgresql://', 1)
     return db_url
 
@@ -17,7 +19,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Fix per PostgreSQL su Heroku/Vercel che usa postgres:// invece di postgresql://
+    # Fix per PostgreSQL (Supabase) che usa postgres:// invece di postgresql://
     @staticmethod
     def fix_database_url(url):
         if url and url.startswith('postgres://'):

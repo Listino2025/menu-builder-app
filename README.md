@@ -17,7 +17,7 @@ Una Progressive Web App per creare panini personalizzati e menu con analisi dei 
 - **Design Responsive**: UI mobile-first con interazioni touch-friendly
 - **Sistema Autenticazione**: Login sicuro con controllo accessi basato su ruoli
 - **API RESTful**: Endpoint JSON per integrazioni frontend
-- **Integrazione Database**: SQLite per sviluppo, PostgreSQL per produzione
+- **Database Cloud**: PostgreSQL su Supabase per massima affidabilità e scalabilità
 - **Sicurezza**: Protezione CSRF, validazione input, header sicuri
 
 ### Ruoli Utente
@@ -31,6 +31,8 @@ Una Progressive Web App per creare panini personalizzati e menu con analisi dei 
 - Python 3.8+
 - pip (gestore pacchetti Python)
 - Git
+- Account Supabase con database PostgreSQL configurato
+- Variabile ambiente DATABASE_URL impostata
 
 ### Guida Rapida
 
@@ -56,16 +58,23 @@ Una Progressive Web App per creare panini personalizzati e menu con analisi dei 
    pip install -r requirements.txt
    ```
 
-4. **Imposta variabili ambiente (opzionale)**
+4. **Imposta variabili ambiente (OBBLIGATORIE)**
    ```bash
    # Windows
    set FLASK_ENV=development
    set SECRET_KEY=your-secret-key-here
+   set DATABASE_URL=postgresql://user:password@host:port/database
    
    # macOS/Linux
    export FLASK_ENV=development
    export SECRET_KEY=your-secret-key-here
+   export DATABASE_URL=postgresql://user:password@host:port/database
    ```
+   
+   **⚠️ IMPORTANTE:** Ottieni la DATABASE_URL dal tuo dashboard Supabase:
+   - Vai su Settings → Database
+   - Copia la Connection String (URI)
+   - Sostituisci [YOUR-PASSWORD] con la password del database
 
 5. **Avvia l'applicazione**
    ```bash
@@ -148,9 +157,15 @@ CHED001,Formaggio Cheddar,CHEESE,0.30,slices,CHILLED
 ```bash
 FLASK_ENV=development|production
 SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///menubuilder.db
+DATABASE_URL=postgresql://user:password@host:port/database
 PORT=5000
 ```
+
+**📋 Setup DATABASE_URL Supabase:**
+1. Vai su [supabase.com](https://supabase.com) → Your Project
+2. Settings → Database → Connection string
+3. Copia la URI e sostituisci [YOUR-PASSWORD]
+4. Imposta come variabile ambiente DATABASE_URL
 
 ### Impostazioni Sicurezza
 - Protezione CSRF abilitata
@@ -219,3 +234,27 @@ pip install gunicorn
 export FLASK_ENV=production
 gunicorn -w 4 -b 0.0.0.0:8000 run:app
 ```
+
+## Setup da Zero con Supabase
+
+Per una nuova installazione:
+
+1. **Crea un progetto Supabase** su [supabase.com](https://supabase.com)
+2. **Ottieni la DATABASE_URL** dal dashboard Supabase
+3. **Imposta la variabile ambiente DATABASE_URL** localmente e su Vercel
+4. **Avvia l'applicazione** (le tabelle si creano automaticamente)
+5. **Accedi con admin/admin123** e inizia a usare l'app
+
+### Nuove Funzionalità v2.0
+- ✅ **Precisione prezzi a 7 decimali** per calcoli più accurati
+- ✅ **WRIN code obbligatori** per tutti gli ingredienti
+- ✅ **Campi delivery e ristorante** per gestione multi-sito
+- ✅ **Drag & drop mobile-friendly** ottimizzato per touch
+- ✅ **Validazione real-time** con controllo duplicati
+- ✅ **Gestione errori migliorata** con messaggi user-friendly
+- ✅ **Eliminazione menu** con controllo dipendenze
+- ✅ **Constraint database** per integrità dati
+
+---
+
+**Sviluppato per la gestione professionale di menu e costi in ambiente ristorativo** 🍔📊

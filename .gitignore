@@ -4,20 +4,32 @@ env/
 ENV/
 
 # Python cache
-__pycache_/
+__pycache__/
 *.py[cod]
 *$py.class
-
 *.pyc
+/app/__pycache__
 
-# Environments
+# Environments (contain sensitive data)
 .env
 .venv
 
-#db
-*.db
-
-# Hidden directories and files
+# Hidden directories and files  
 .*/
-.env
-/app/__pycache__
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
