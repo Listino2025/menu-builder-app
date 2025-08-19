@@ -175,18 +175,12 @@
                         
                         <div class="mb-3">
                             <label for="restaurant_id" class="form-label">ID Ristorante *</label>
-                            <select class="form-select" id="restaurant_id" name="restaurant_id" required>
-                                <option value="">Seleziona ristorante...</option>
-                                <option value="REST_001">Ristorante Roma Centro</option>
-                                <option value="REST_002">Ristorante Milano Duomo</option>
-                                <option value="REST_003">Ristorante Napoli Centrale</option>
-                                <option value="REST_004">Ristorante Torino Porta Nuova</option>
-                                <option value="REST_005">Ristorante Firenze Santa Maria Novella</option>
-                            </select>
+                            <input type="text" class="form-control" id="restaurant_id" name="restaurant_id" 
+                                   placeholder="es. REST_ROMA_001 o SITE_12345" required>
                             <div class="invalid-feedback">
-                                Seleziona un ristorante per i prezzi specifici.
+                                Inserisci l'ID univoco del ristorante.
                             </div>
-                            <small class="text-muted">Per prezzi specifici per site</small>
+                            <small class="text-muted">Identificativo univoco del ristorante per prezzi specifici per sito</small>
                         </div>
                         
                         <div class="mb-3">
@@ -948,6 +942,15 @@ class SandwichComposer {
                 field.focus();
                 return false;
             }
+        }
+        
+        // Validate restaurant_id format (basic check)
+        const restaurantId = document.getElementById('restaurant_id').value.trim();
+        if (restaurantId.length < 3) {
+            e.preventDefault();
+            this.showAlert('L\'ID Ristorante deve contenere almeno 3 caratteri', 'error');
+            document.getElementById('restaurant_id').focus();
+            return false;
         }
         
         // Validate price format

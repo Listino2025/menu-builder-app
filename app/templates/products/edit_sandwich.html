@@ -174,17 +174,13 @@
                         
                         <div class="mb-3">
                             <label for="restaurant_id" class="form-label">ID Ristorante *</label>
-                            <select class="form-select" id="restaurant_id" name="restaurant_id" required>
-                                <option value="">Seleziona ristorante...</option>
-                                <option value="REST_001" {{ 'selected' if product.restaurant_id == 'REST_001' else '' }}>Ristorante Roma Centro</option>
-                                <option value="REST_002" {{ 'selected' if product.restaurant_id == 'REST_002' else '' }}>Ristorante Milano Duomo</option>
-                                <option value="REST_003" {{ 'selected' if product.restaurant_id == 'REST_003' else '' }}>Ristorante Napoli Centrale</option>
-                                <option value="REST_004" {{ 'selected' if product.restaurant_id == 'REST_004' else '' }}>Ristorante Torino Porta Nuova</option>
-                                <option value="REST_005" {{ 'selected' if product.restaurant_id == 'REST_005' else '' }}>Ristorante Firenze Santa Maria Novella</option>
-                            </select>
+                            <input type="text" class="form-control" id="restaurant_id" name="restaurant_id" 
+                                   value="{{ product.restaurant_id or '' }}" 
+                                   placeholder="es. REST_ROMA_001 o SITE_12345" required>
                             <div class="invalid-feedback">
-                                Seleziona un ristorante per i prezzi specifici.
+                                Inserisci l'ID univoco del ristorante.
                             </div>
+                            <small class="text-muted">Identificativo univoco del ristorante per prezzi specifici per sito</small>
                         </div>
                         
                         <div class="mb-3">
