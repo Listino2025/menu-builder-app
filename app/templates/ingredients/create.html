@@ -42,10 +42,13 @@
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="wrin_code" class="form-label">Codice WRIN</label>
+                                <label for="wrin_code" class="form-label">Codice WRIN *</label>
                                 <input type="text" class="form-control" id="wrin_code" name="wrin_code" 
-                                       placeholder="es. BEEF001">
-                                <small class="text-muted">Opzionale - codice identificativo</small>
+                                       placeholder="es. BEEF001" required>
+                                <div class="invalid-feedback">
+                                    Il codice WRIN è obbligatorio per tutte le ricette.
+                                </div>
+                                <div id="wrin-code-feedback" class="form-text"></div>
                             </div>
                         </div>
                         
@@ -81,24 +84,36 @@
                                 <div class="input-group">
                                     <span class="input-group-text">€</span>
                                     <input type="number" class="form-control" id="price_per_unit" name="price_per_unit" 
-                                           step="0.001" min="0" placeholder="0.000" required>
+                                           step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required>
                                 </div>
                                 <div class="invalid-feedback">
-                                    Inserisci un prezzo valido.
+                                    Inserisci un prezzo valido (fino a 7 decimali).
                                 </div>
+                                <small class="text-muted">Precisione: fino a 7 cifre decimali (es: €12.3456789)</small>
                             </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label for="unit_type" class="form-label">Tipo Unità *</label>
                                 <select class="form-select" id="unit_type" name="unit_type" required>
                                     <option value="">Seleziona unità...</option>
-                                    <option value="pieces">Pezzi</option>
-                                    <option value="kg">Chilogrammi (kg)</option>
-                                    <option value="g">Grammi (g)</option>
-                                    <option value="l">Litri (l)</option>
-                                    <option value="ml">Millilitri (ml)</option>
-                                    <option value="slices">Fette</option>
-                                    <option value="portions">Porzioni</option>
+                                    <optgroup label="Peso">
+                                        <option value="kg">Chilogrammi (kg)</option>
+                                        <option value="hg">Ettogrammi (hg)</option>
+                                        <option value="dag">Decagrammi (dag)</option>
+                                        <option value="g">Grammi (g)</option>
+                                        <option value="dg">Decigrammi (dg)</option>
+                                    </optgroup>
+                                    <optgroup label="Volume">
+                                        <option value="l">Litri (l)</option>
+                                        <option value="dl">Decilitri (dl)</option>
+                                        <option value="cl">Centilitri (cl)</option>
+                                        <option value="ml">Millilitri (ml)</option>
+                                    </optgroup>
+                                    <optgroup label="Conteggio">
+                                        <option value="pieces">Pezzi</option>
+                                        <option value="slices">Fette</option>
+                                        <option value="portions">Porzioni</option>
+                                    </optgroup>
                                 </select>
                                 <div class="invalid-feedback">
                                     Seleziona il tipo di unità.
@@ -136,14 +151,14 @@
 
 {% block scripts %}
 <script>
-// Form validation
+// Form validation with duplicate checking
 (function() {
     'use strict';
     window.addEventListener('load', function() {
         var forms = document.getElementsByClassName('needs-validation');
         var validation = Array.prototype.filter.call(forms, function(form) {
             form.addEventListener('submit', function(event) {
-                if (form.checkValidity() === false) {
+                if (form.checkValidity() === false || !validateFormData()) {
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -153,12 +168,101 @@
     }, false);
 })();
 
-// Price formatting
+// WRIN code validation
+document.getElementById('wrin_code').addEventListener('blur', function(e) {
+    const wrinCode = e.target.value.trim();
+    const feedbackDiv = document.getElementById('wrin-code-feedback');
+    
+    if (wrinCode) {
+        // Check for duplicate WRIN code via AJAX
+        fetch('/api/validate-wrin-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({wrin_code: wrinCode})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                e.target.classList.add('is-invalid');
+                feedbackDiv.innerHTML = '<span class="text-danger">Questo codice WRIN esiste già</span>';
+            } else {
+                e.target.classList.remove('is-invalid');
+                e.target.classList.add('is-valid');
+                feedbackDiv.innerHTML = '<span class="text-success">Codice WRIN disponibile</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error validating WRIN code:', error);
+            feedbackDiv.innerHTML = '<span class="text-warning">Impossibile validare il codice</span>';
+        });
+    } else {
+        e.target.classList.remove('is-invalid', 'is-valid');
+        feedbackDiv.innerHTML = '';
+    }
+});
+
+// Validate form data before submission
+function validateFormData() {
+    const unitType = document.getElementById('unit_type').value;
+    const validUnits = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions'];
+    
+    if (!validUnits.includes(unitType)) {
+        alert('Tipo di unità non valido. Seleziona una delle opzioni disponibili.');
+        return false;
+    }
+    
+    const price = parseFloat(document.getElementById('price_per_unit').value);
+    if (isNaN(price) || price < 0 || price > 999.9999999) {
+        alert('Il prezzo deve essere un numero valido tra 0 e 999.9999999');
+        return false;
+    }
+    
+    return true;
+}
+
+// Price formatting with 7 decimal precision
 document.getElementById('price_per_unit').addEventListener('input', function(e) {
     let value = parseFloat(e.target.value);
     if (!isNaN(value)) {
+        // Limit to 7 decimal places
+        if (value.toString().includes('.') && value.toString().split('.')[1].length > 7) {
+            e.target.value = value.toFixed(7);
+        }
         // Update preview
         updatePreview();
+    }
+});
+
+// Real-time validation feedback
+document.getElementById('name').addEventListener('input', function(e) {
+    if (e.target.value.length > 0) {
+        e.target.classList.remove('is-invalid');
+        e.target.classList.add('is-valid');
+    }
+});
+
+document.getElementById('category').addEventListener('change', function(e) {
+    if (e.target.value !== '') {
+        e.target.classList.remove('is-invalid');
+        e.target.classList.add('is-valid');
+    }
+});
+
+document.getElementById('unit_type').addEventListener('change', function(e) {
+    if (e.target.value !== '') {
+        e.target.classList.remove('is-invalid');
+        e.target.classList.add('is-valid');
+    }
+});
+
+document.getElementById('price_per_unit').addEventListener('input', function(e) {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value) && value >= 0 && value <= 999.9999999) {
+        e.target.classList.remove('is-invalid');
+        e.target.classList.add('is-valid');
     }
 });
 

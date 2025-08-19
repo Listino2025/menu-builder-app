@@ -206,3 +206,39 @@ def category_distribution():
         'labels': [cat.category for cat in categories],
         'data': [cat.usage_count for cat in categories]
     })
+
+@bp.route('/validate-wrin-code', methods=['POST'])
+@login_required
+def validate_wrin_code():
+    """Validate if WRIN code already exists"""
+    data = request.get_json()
+    
+    if not data or 'wrin_code' not in data:
+        return jsonify({'error': 'WRIN code is required'}), 400
+    
+    wrin_code = data['wrin_code'].strip()
+    if not wrin_code:
+        return jsonify({'exists': False})
+    
+    # Check if WRIN code already exists
+    existing = Ingredient.query.filter_by(wrin_code=wrin_code).first()
+    
+    return jsonify({'exists': existing is not None})
+
+@bp.route('/validate-product-code', methods=['POST'])
+@login_required
+def validate_product_code():
+    """Validate if product code already exists"""
+    data = request.get_json()
+    
+    if not data or 'product_code' not in data:
+        return jsonify({'error': 'Product code is required'}), 400
+    
+    product_code = data['product_code'].strip()
+    if not product_code:
+        return jsonify({'exists': False})
+    
+    # Check if product code already exists
+    existing = Product.query.filter_by(product_code=product_code).first()
+    
+    return jsonify({'exists': existing is not None})

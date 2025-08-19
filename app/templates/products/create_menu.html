@@ -42,21 +42,68 @@
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="menu_description" class="form-label">Descrizione</label>
-                                <input type="text" class="form-control" id="menu_description" name="description" 
-                                       placeholder="Breve descrizione del menu">
+                                <label for="product_code_id" class="form-label">ID Codice Prodotto *</label>
+                                <input type="text" class="form-control" id="product_code_id" name="product_code_id" 
+                                       placeholder="es. MN_001_CLASSIC" required>
+                                <div class="invalid-feedback">
+                                    Inserisci l'ID del codice prodotto.
+                                </div>
+                                <small class="text-muted">Identificativo univoco del menu nel sistema McDonald's</small>
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="selling_price" class="form-label">Prezzo di Vendita (€)</label>
+                                <label for="restaurant_id" class="form-label">ID Ristorante *</label>
+                                <select class="form-select" id="restaurant_id" name="restaurant_id" required>
+                                    <option value="">Seleziona ristorante...</option>
+                                    <option value="REST_001">McDonald's Roma Centro</option>
+                                    <option value="REST_002">McDonald's Milano Duomo</option>
+                                    <option value="REST_003">McDonald's Napoli Centrale</option>
+                                    <option value="REST_004">McDonald's Torino Porta Nuova</option>
+                                    <option value="REST_005">McDonald's Firenze Santa Maria Novella</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Seleziona un ristorante per i prezzi specifici.
+                                </div>
+                                <small class="text-muted">Per prezzi specifici per site</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="delivery_price_id" class="form-label">ID Prezzo Delivery *</label>
+                                <input type="text" class="form-control" id="delivery_price_id" name="delivery_price_id" 
+                                       placeholder="es. DELIV_PRICE_MENU_001" required>
+                                <div class="invalid-feedback">
+                                    Inserisci l'ID del prezzo prodotto Delivery.
+                                </div>
+                                <small class="text-muted">Identificativo del prezzo per il servizio delivery</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="selling_price" class="form-label">Prezzo di Vendita (€) *</label>
                                 <div class="input-group">
                                     <span class="input-group-text">€</span>
                                     <input type="number" class="form-control" id="selling_price" name="selling_price" 
-                                           step="0.01" min="0" placeholder="0.00">
+                                           step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required>
                                 </div>
-                                <small class="text-muted">Prezzo finale del menu completo</small>
+                                <div class="invalid-feedback">
+                                    Inserisci un prezzo di vendita valido.
+                                </div>
+                                <small class="text-muted">Prezzo finale del menu completo (fino a 7 decimali)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="food_paper_cost_total" class="form-label">Food + Paper Cost Totale (€) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" class="form-control" id="food_paper_cost_total" name="food_paper_cost_total" 
+                                           step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Inserisci il costo totale Food + Paper.
+                                </div>
+                                <small class="text-muted">Costo totale di ingredienti + packaging</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Analisi Profitto</label>

@@ -74,12 +74,22 @@ def create_sandwich():
             product_count = Product.query.filter_by(created_by=current_user.id).count()
             product_code = f"SW_{current_user.id}_{product_count + 1}"
             
-            # Create product
+            # Validate required fields
+            required_fields = ['name', 'product_code_id', 'restaurant_id', 'delivery_price_id', 'selling_price', 'food_paper_cost_total']
+            for field in required_fields:
+                if not request.form.get(field) or request.form.get(field).strip() == '':
+                    flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
+                    return redirect(request.url)
+            
+            # Create product with new mandatory fields
             product = Product(
                 name=request.form['name'],
-                product_code=product_code,
+                product_code=request.form.get('product_code_id', product_code),  # Use provided ID or generated one
                 product_type='sandwich',
-                selling_price=float(request.form['selling_price']) if request.form.get('selling_price') else None,
+                selling_price=float(request.form['selling_price']),
+                restaurant_id=request.form['restaurant_id'],
+                delivery_price_id=request.form['delivery_price_id'],
+                food_paper_cost_total=float(request.form['food_paper_cost_total']),
                 created_by=current_user.id
             )
             
@@ -143,19 +153,29 @@ def create_menu():
             product_count = Product.query.filter_by(created_by=current_user.id).count()
             product_code = f"MN_{current_user.id}_{product_count + 1}"
             
-            # Create menu product
+            # Validate required fields for menu
+            menu_required_fields = ['name', 'product_code_id', 'restaurant_id', 'delivery_price_id', 'selling_price', 'food_paper_cost_total']
+            for field in menu_required_fields:
+                if not request.form.get(field) or request.form.get(field).strip() == '':
+                    flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
+                    return redirect(request.url)
+            
+            # Create menu product with new mandatory fields
             from decimal import Decimal
             selling_price = request.form.get('selling_price')
             selling_price_decimal = Decimal(str(selling_price)) if selling_price and selling_price.strip() else None
             
             menu = Product(
                 name=request.form['name'],
-                product_code=product_code,
+                product_code=request.form.get('product_code_id', product_code),
                 product_type='menu',
                 selling_price=selling_price_decimal,
                 sandwich_id=int(request.form['sandwich_id']) if request.form.get('sandwich_id') else None,
                 fries_size=request.form.get('fries_size'),
                 drink_size=request.form.get('drink_size'),
+                restaurant_id=request.form['restaurant_id'],
+                delivery_price_id=request.form['delivery_price_id'],
+                food_paper_cost_total=Decimal(str(request.form['food_paper_cost_total'])),
                 created_by=current_user.id
             )
             
@@ -318,13 +338,19 @@ def delete_product(id):
                 flash(error_msg, 'error')
                 return redirect(url_for('main.products'))
         
+        # Soft delete the product
         product.is_active = False
         db.session.commit()
         
         success_msg = f'{product.product_type.title()} "{product.name}" eliminato con successo!'
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'message': success_msg})
+            return jsonify({
+                'success': True, 
+                'message': success_msg,
+                'product_type': product.product_type,
+                'redirect_url': url_for('main.products')
+            })
         
         flash(success_msg, 'success')
         return redirect(url_for('main.products'))
@@ -351,10 +377,23 @@ def duplicate_product(id):
         return redirect(url_for('main.products'))
     
     try:
-        # Generate new product code
+        # Generate unique product code for duplicate
         product_count = Product.query.filter_by(created_by=current_user.id).count()
         prefix = "SW" if original.product_type == 'sandwich' else "MN"
-        product_code = f"{prefix}_{current_user.id}_{product_count + 1}"
+        attempts = 0
+        max_attempts = 10
+        product_code = None
+        
+        while attempts < max_attempts:
+            product_code = f"{prefix}_{current_user.id}_{product_count + 1 + attempts}"
+            existing_product = Product.query.filter_by(product_code=product_code).first()
+            if not existing_product:
+                break
+            attempts += 1
+        
+        if attempts >= max_attempts:
+            flash('Unable to generate unique product code for duplicate. Please try again.', 'error')
+            return redirect(url_for('main.products'))
         
         # Create duplicate
         duplicate = Product(
@@ -390,5 +429,111 @@ def duplicate_product(id):
         
     except Exception as e:
         db.session.rollback()
-        flash(f'Error duplicating product: {str(e)}', 'error')
+        if 'product_code' in str(e).lower() and 'unique' in str(e).lower():
+            flash('Product code already exists. Please try again.', 'error')
+        else:
+            flash(f'Error duplicating product: {str(e)}', 'error')
+        return redirect(url_for('main.products'))
+
+@bp.route('/products/bulk-delete', methods=['POST'])
+@login_required
+def bulk_delete_products():
+    """Bulk delete multiple products"""
+    data = request.get_json()
+    
+    if not data or 'product_ids' not in data:
+        return jsonify({'success': False, 'message': 'No product IDs provided'}), 400
+    
+    product_ids = data['product_ids']
+    if not isinstance(product_ids, list) or not product_ids:
+        return jsonify({'success': False, 'message': 'Invalid product IDs'}), 400
+    
+    try:
+        deleted_count = 0
+        skipped_count = 0
+        error_messages = []
+        
+        for product_id in product_ids:
+            try:
+                product = Product.query.get(int(product_id))
+                if not product:
+                    error_messages.append(f'Product ID {product_id} not found')
+                    continue
+                
+                # Check permissions
+                if not current_user.is_manager() and product.created_by != current_user.id:
+                    error_messages.append(f'No permission to delete "{product.name}"')
+                    continue
+                
+                # Check if sandwich is used in menus
+                if product.product_type == 'sandwich':
+                    menus_using_sandwich = Product.query.filter_by(sandwich_id=product.id, is_active=True).count()
+                    if menus_using_sandwich > 0:
+                        error_messages.append(f'Cannot delete "{product.name}" - used in {menus_using_sandwich} menus')
+                        skipped_count += 1
+                        continue
+                
+                # Soft delete
+                product.is_active = False
+                deleted_count += 1
+                
+            except ValueError:
+                error_messages.append(f'Invalid product ID: {product_id}')
+            except Exception as e:
+                error_messages.append(f'Error deleting product {product_id}: {str(e)}')
+        
+        db.session.commit()
+        
+        result = {
+            'success': True,
+            'deleted_count': deleted_count,
+            'skipped_count': skipped_count,
+            'total_requested': len(product_ids)
+        }
+        
+        if error_messages:
+            result['errors'] = error_messages
+            result['message'] = f'Deleted {deleted_count} products. {len(error_messages)} errors occurred.'
+        else:
+            result['message'] = f'Successfully deleted {deleted_count} products.'
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False, 
+            'message': f'Database error during bulk deletion: {str(e)}'
+        }), 500
+
+@bp.route('/products/restore/<int:id>', methods=['POST'])
+@login_required
+def restore_product(id):
+    """Restore a soft-deleted product"""
+    product = Product.query.get_or_404(id)
+    
+    # Check permissions
+    if not current_user.is_manager() and product.created_by != current_user.id:
+        return jsonify({'success': False, 'message': 'Non hai i permessi per ripristinare questo prodotto.'}), 403
+    
+    try:
+        product.is_active = True
+        db.session.commit()
+        
+        success_msg = f'{product.product_type.title()} "{product.name}" ripristinato con successo!'
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': success_msg})
+        
+        flash(success_msg, 'success')
+        return redirect(url_for('main.products'))
+        
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f'Errore durante il ripristino del prodotto: {str(e)}'
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': error_msg}), 500
+        
+        flash(error_msg, 'error')
         return redirect(url_for('main.products'))

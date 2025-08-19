@@ -39,11 +39,16 @@ class Ingredient(db.Model):
     __tablename__ = 'ingredients'
     
     id = db.Column(db.Integer, primary_key=True)
-    wrin_code = db.Column(db.String(20), unique=True, nullable=True, index=True)
+    wrin_code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50), nullable=False, index=True)  # FOOD_FROZEN, FOOD_CHILLED, etc.
-    price_per_unit = db.Column(db.Numeric(10, 3), nullable=False)
-    unit_type = db.Column(db.String(20), nullable=False)  # kg, g, l, ml, pieces, etc.
+    price_per_unit = db.Column(db.Numeric(15, 7), nullable=False)
+    unit_type = db.Column(db.String(20), nullable=False)
+    
+    # Valid unit types constraint
+    __table_args__ = (
+        db.CheckConstraint(unit_type.in_(['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']), name='ingredients_unit_type_check'),
+    )
     temperature_zone = db.Column(db.String(50), nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -77,10 +82,15 @@ class Product(db.Model):
     name = db.Column(db.String(200), nullable=False)
     product_code = db.Column(db.String(50), unique=True, nullable=False, index=True)
     product_type = db.Column(db.String(20), default='sandwich', nullable=False)  # sandwich, menu
-    selling_price = db.Column(db.Numeric(10, 2), nullable=True)  # Can be null for sandwiches used in menus
-    total_cost = db.Column(db.Numeric(10, 3), nullable=False, default=0)
-    gross_profit = db.Column(db.Numeric(10, 2), nullable=True)
-    gross_profit_percent = db.Column(db.Numeric(5, 2), nullable=True)
+    selling_price = db.Column(db.Numeric(15, 7), nullable=True)  # Can be null for sandwiches used in menus
+    total_cost = db.Column(db.Numeric(15, 7), nullable=False, default=0)
+    gross_profit = db.Column(db.Numeric(15, 7), nullable=True)
+    gross_profit_percent = db.Column(db.Numeric(8, 4), nullable=True)
+    
+    # New required fields for menu creation
+    restaurant_id = db.Column(db.String(50), nullable=True)  # ID ristorante per prezzi specifici
+    delivery_price_id = db.Column(db.String(50), nullable=True)  # ID Prezzo prodotto Delivery
+    food_paper_cost_total = db.Column(db.Numeric(15, 7), nullable=True)  # Food + Paper Cost Totale
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -127,7 +137,7 @@ class ProductIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
-    quantity = db.Column(db.Numeric(8, 3), nullable=False, default=1)
+    quantity = db.Column(db.Numeric(15, 7), nullable=False, default=1)
     
     # Relationships
     ingredient = db.relationship('Ingredient', backref='product_uses')

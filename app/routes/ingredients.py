@@ -45,12 +45,33 @@ def create_ingredient():
     """Create a new ingredient"""
     if request.method == 'POST':
         try:
+            # Validate wrin_code uniqueness if provided
+            wrin_code = request.form.get('wrin_code') or None
+            if wrin_code:
+                existing_wrin = Ingredient.query.filter_by(wrin_code=wrin_code).first()
+                if existing_wrin:
+                    flash(f'WRIN code "{wrin_code}" already exists. Please use a different code.', 'error')
+                    return render_template('ingredients/create.html', 
+                                         categories=Ingredient.CATEGORIES,
+                                         temp_zones=Ingredient.TEMP_ZONES,
+                                         form_data=request.form)
+            
+            # Validate unit type
+            valid_units = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']
+            unit_type = request.form['unit_type']
+            if unit_type not in valid_units:
+                flash(f'Invalid unit type. Please select from: {", ".join(valid_units)}', 'error')
+                return render_template('ingredients/create.html', 
+                                     categories=Ingredient.CATEGORIES,
+                                     temp_zones=Ingredient.TEMP_ZONES,
+                                     form_data=request.form)
+            
             ingredient = Ingredient(
-                wrin_code=request.form.get('wrin_code') or None,
+                wrin_code=wrin_code,
                 name=request.form['name'],
                 category=request.form['category'],
                 price_per_unit=float(request.form['price_per_unit']),
-                unit_type=request.form['unit_type'],
+                unit_type=unit_type,
                 temperature_zone=request.form.get('temperature_zone'),
                 created_by=current_user.id
             )
@@ -63,9 +84,22 @@ def create_ingredient():
             
         except ValueError as e:
             flash('Invalid price format. Please enter a valid number.', 'error')
+            return render_template('ingredients/create.html', 
+                                 categories=Ingredient.CATEGORIES,
+                                 temp_zones=Ingredient.TEMP_ZONES,
+                                 form_data=request.form)
         except Exception as e:
             db.session.rollback()
-            flash(f'Error creating ingredient: {str(e)}', 'error')
+            if 'wrin_code' in str(e).lower() and 'unique' in str(e).lower():
+                flash(f'WRIN code already exists. Please use a different code.', 'error')
+            elif 'unit_type' in str(e).lower() and 'check' in str(e).lower():
+                flash(f'Invalid unit type. Please select a valid unit.', 'error')
+            else:
+                flash(f'Error creating ingredient: {str(e)}', 'error')
+            return render_template('ingredients/create.html', 
+                                 categories=Ingredient.CATEGORIES,
+                                 temp_zones=Ingredient.TEMP_ZONES,
+                                 form_data=request.form)
     
     return render_template('ingredients/create.html', 
                          categories=Ingredient.CATEGORIES,
@@ -79,11 +113,32 @@ def edit_ingredient(id):
     
     if request.method == 'POST':
         try:
-            ingredient.wrin_code = request.form.get('wrin_code') or None
+            # Validate wrin_code uniqueness if provided and changed
+            wrin_code = request.form.get('wrin_code') or None
+            if wrin_code and wrin_code != ingredient.wrin_code:
+                existing_wrin = Ingredient.query.filter_by(wrin_code=wrin_code).first()
+                if existing_wrin:
+                    flash(f'WRIN code "{wrin_code}" already exists. Please use a different code.', 'error')
+                    return render_template('ingredients/edit.html', 
+                                         ingredient=ingredient,
+                                         categories=Ingredient.CATEGORIES,
+                                         temp_zones=Ingredient.TEMP_ZONES)
+            
+            # Validate unit type
+            valid_units = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']
+            unit_type = request.form['unit_type']
+            if unit_type not in valid_units:
+                flash(f'Invalid unit type. Please select from: {", ".join(valid_units)}', 'error')
+                return render_template('ingredients/edit.html', 
+                                     ingredient=ingredient,
+                                     categories=Ingredient.CATEGORIES,
+                                     temp_zones=Ingredient.TEMP_ZONES)
+            
+            ingredient.wrin_code = wrin_code
             ingredient.name = request.form['name']
             ingredient.category = request.form['category']
             ingredient.price_per_unit = float(request.form['price_per_unit'])
-            ingredient.unit_type = request.form['unit_type']
+            ingredient.unit_type = unit_type
             ingredient.temperature_zone = request.form.get('temperature_zone')
             
             db.session.commit()
@@ -95,7 +150,12 @@ def edit_ingredient(id):
             flash('Invalid price format. Please enter a valid number.', 'error')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error updating ingredient: {str(e)}', 'error')
+            if 'wrin_code' in str(e).lower() and 'unique' in str(e).lower():
+                flash(f'WRIN code already exists. Please use a different code.', 'error')
+            elif 'unit_type' in str(e).lower() and 'check' in str(e).lower():
+                flash(f'Invalid unit type. Please select a valid unit.', 'error')
+            else:
+                flash(f'Error updating ingredient: {str(e)}', 'error')
     
     return render_template('ingredients/edit.html', 
                          ingredient=ingredient,

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Crea Ricetta - Menu Builder{% endblock %}
+{% block title %}Modifica Ricetta - Menu Builder{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -10,13 +10,18 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="h3 mb-0">
-                        <i class="bi bi-journal-text me-2 text-primary"></i>Crea Ricetta
+                        <i class="bi bi-pencil me-2 text-primary"></i>Modifica Ricetta
                     </h1>
-                    <p class="text-muted mb-0">Componi la tua ricetta personalizzata con drag & drop</p>
+                    <p class="text-muted mb-0">{{ product.name }}</p>
                 </div>
-                <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i>Torna ai Prodotti
-                </a>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.product_detail', id=product.id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Torna al Prodotto
+                    </a>
+                    <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-1"></i>Tutti i Prodotti
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -64,7 +69,7 @@
                                     {{ category.replace('_', ' ').title() }}
                                 </h6>
                                 {% for ingredient in ingredients %}
-                                <div class="ingredient-item mb-2" 
+                                <div class="ingredient-item mb-2 {{ 'selected' if ingredient.id in current_ingredients.keys() else '' }}"
                                      data-ingredient-id="{{ ingredient.id }}"
                                      data-ingredient-name="{{ ingredient.name }}"
                                      data-ingredient-price="{{ ingredient.price_per_unit }}"
@@ -79,7 +84,7 @@
                                         <div class="flex-grow-1">
                                             <div class="fw-medium">{{ ingredient.name }}</div>
                                             <small class="text-muted">
-                                                €{{ "%.3f"|format(ingredient.price_per_unit) }} / {{ ingredient.unit_type }}
+                                                €{{ "%.7f"|format(ingredient.price_per_unit) }} / {{ ingredient.unit_type }}
                                                 {% if ingredient.wrin_code %}
                                                 • {{ ingredient.wrin_code }}
                                                 {% endif %}
@@ -113,32 +118,26 @@
                             <div class="sandwich-visual text-center">
                                 <div class="empty-sandwich py-5">
                                     <i class="bi bi-burger display-4 text-muted"></i>
-                                    <p class="text-muted mt-2">Trascina gli ingredienti qui per costruire la tua ricetta</p>
+                                    <p class="text-muted mt-2">Ingredienti caricati dalla ricetta esistente</p>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Ingredients Builder Area -->
                         <div class="sandwich-builder" id="sandwich-builder">
-                            <div class="drop-zone text-center p-4">
-                                <i class="bi bi-plus-circle display-6 text-muted"></i>
-                                <p class="text-muted mt-2 mb-0">
-                                    Rilascia gli ingredienti qui o usa il pulsante +
-                                </p>
-                            </div>
+                            <!-- Existing ingredients will be loaded here by JavaScript -->
                         </div>
                         
                         <!-- Build Instructions -->
-                        <div class="alert alert-info mt-3">
+                        <div class="alert alert-warning mt-3">
                             <h6 class="alert-heading">
-                                <i class="bi bi-info-circle me-1"></i>Suggerimenti per la Costruzione
+                                <i class="bi bi-exclamation-triangle me-1"></i>Modifica Ricetta Esistente
                             </h6>
                             <ul class="mb-0 small">
-                                <li>Inizia con una base (panino) e aggiungi proteine</li>
-                                <li>Trascina gli ingredienti per riordinare i livelli</li>
-                                <li><strong>Inserisci quantità assolute</strong> (es: 200g, 50ml, 2 pezzi)</li>
-                                <li>Usa i pulsanti +/- per incrementi rapidi</li>
-                                <li>Guarda l'aggiornamento del costo in tempo reale</li>
+                                <li>Puoi modificare le quantità degli ingredienti esistenti</li>
+                                <li>Puoi aggiungere o rimuovere ingredienti</li>
+                                <li><strong>ATTENZIONE:</strong> Le modifiche influenzeranno tutti i menu che usano questa ricetta</li>
+                                <li>Il codice prodotto automatico sarà preservato</li>
                             </ul>
                         </div>
                     </div>
@@ -157,7 +156,7 @@
                         <div class="mb-3">
                             <label for="name" class="form-label">Nome Ricetta *</label>
                             <input type="text" class="form-control" id="name" name="name" 
-                                   placeholder="es. Burger Classico" required>
+                                   value="{{ product.name }}" required>
                             <div class="invalid-feedback">
                                 Inserisci un nome per la ricetta.
                             </div>
@@ -166,37 +165,35 @@
                         <div class="mb-3">
                             <label for="product_code_id" class="form-label">ID Codice Prodotto *</label>
                             <input type="text" class="form-control" id="product_code_id" name="product_code_id" 
-                                   placeholder="es. SW_001_CLASSIC" required>
+                                   value="{{ product.product_code }}" required readonly>
                             <div class="invalid-feedback">
-                                Inserisci l'ID del codice prodotto.
+                                L'ID del codice prodotto non può essere modificato.
                             </div>
-                            <small class="text-muted">Identificativo univoco del prodotto nel sistema McDonald's</small>
+                            <small class="text-muted">Generato automaticamente - non modificabile</small>
                         </div>
                         
                         <div class="mb-3">
                             <label for="restaurant_id" class="form-label">ID Ristorante *</label>
                             <select class="form-select" id="restaurant_id" name="restaurant_id" required>
                                 <option value="">Seleziona ristorante...</option>
-                                <option value="REST_001">McDonald's Roma Centro</option>
-                                <option value="REST_002">McDonald's Milano Duomo</option>
-                                <option value="REST_003">McDonald's Napoli Centrale</option>
-                                <option value="REST_004">McDonald's Torino Porta Nuova</option>
-                                <option value="REST_005">McDonald's Firenze Santa Maria Novella</option>
+                                <option value="REST_001" {{ 'selected' if product.restaurant_id == 'REST_001' else '' }}>McDonald's Roma Centro</option>
+                                <option value="REST_002" {{ 'selected' if product.restaurant_id == 'REST_002' else '' }}>McDonald's Milano Duomo</option>
+                                <option value="REST_003" {{ 'selected' if product.restaurant_id == 'REST_003' else '' }}>McDonald's Napoli Centrale</option>
+                                <option value="REST_004" {{ 'selected' if product.restaurant_id == 'REST_004' else '' }}>McDonald's Torino Porta Nuova</option>
+                                <option value="REST_005" {{ 'selected' if product.restaurant_id == 'REST_005' else '' }}>McDonald's Firenze Santa Maria Novella</option>
                             </select>
                             <div class="invalid-feedback">
                                 Seleziona un ristorante per i prezzi specifici.
                             </div>
-                            <small class="text-muted">Per prezzi specifici per site</small>
                         </div>
                         
                         <div class="mb-3">
                             <label for="delivery_price_id" class="form-label">ID Prezzo Delivery *</label>
                             <input type="text" class="form-control" id="delivery_price_id" name="delivery_price_id" 
-                                   placeholder="es. DELIV_PRICE_001" required>
+                                   value="{{ product.delivery_price_id or '' }}" required>
                             <div class="invalid-feedback">
                                 Inserisci l'ID del prezzo prodotto Delivery.
                             </div>
-                            <small class="text-muted">Identificativo del prezzo per il servizio delivery</small>
                         </div>
                         
                         <div class="mb-3">
@@ -204,12 +201,11 @@
                             <div class="input-group">
                                 <span class="input-group-text">€</span>
                                 <input type="number" class="form-control" id="selling_price" name="selling_price" 
-                                       step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required data-calculate-cost>
+                                       value="{{ product.selling_price or '' }}" step="0.0000001" min="0" max="999.9999999" required data-calculate-cost>
                             </div>
                             <div class="invalid-feedback">
                                 Inserisci un prezzo di vendita valido.
                             </div>
-                            <small class="text-muted">Precisione fino a 7 decimali</small>
                         </div>
                         
                         <div class="mb-3">
@@ -217,12 +213,11 @@
                             <div class="input-group">
                                 <span class="input-group-text">€</span>
                                 <input type="number" class="form-control" id="food_paper_cost_total" name="food_paper_cost_total" 
-                                       step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required>
+                                       value="{{ product.food_paper_cost_total or '' }}" step="0.0000001" min="0" max="999.9999999" required>
                             </div>
                             <div class="invalid-feedback">
                                 Inserisci il costo totale Food + Paper.
                             </div>
-                            <small class="text-muted">Costo totale di ingredienti + packaging</small>
                         </div>
                         
                         <!-- Hidden ingredient inputs (populated by JavaScript) -->
@@ -237,42 +232,37 @@
                             <i class="bi bi-calculator me-2"></i>Analisi Costi
                         </h6>
                         
-                        <div class="cost-display" id="total-cost">€0.000</div>
+                        <div class="cost-display" id="total-cost">€{{ "%.7f"|format(product.total_cost) }}</div>
                         <small class="opacity-75">Costo Totale</small>
                         
                         <hr class="my-3 opacity-50">
                         
                         <div class="row text-center">
                             <div class="col-6">
-                                <div class="profit-display" id="gross-profit">€0.00</div>
+                                <div class="profit-display" id="gross-profit">€{{ "%.2f"|format(product.gross_profit or 0) }}</div>
                                 <small class="opacity-75">Profitto Lordo</small>
                             </div>
                             <div class="col-6">
-                                <div class="profit-display" id="profit-percentage">0.0%</div>
+                                <div class="profit-display" id="profit-percentage">{{ "%.1f"|format(product.gross_profit_percent or 0) }}%</div>
                                 <small class="opacity-75">Margine</small>
                             </div>
                         </div>
                         
                         <div class="mt-3">
                             <small class="opacity-75">
-                                <span id="ingredient-count">0</span> ingredienti selezionati
+                                <span id="ingredient-count">{{ product.ingredients.count() }}</span> ingredienti selezionati
                             </small>
                         </div>
-                        
-                        <!-- Hidden cost inputs for form submission -->
-                        <input type="hidden" id="total_cost" name="total_cost" value="0">
-                        <input type="hidden" id="gross_profit" name="gross_profit" value="0">
-                        <input type="hidden" id="gross_profit_percent" name="gross_profit_percent" value="0">
                     </div>
                 </div>
                 
                 <!-- Action Buttons -->
                 <div class="d-grid gap-2 mt-3">
                     <button type="submit" class="btn btn-primary btn-lg" id="save-sandwich">
-                        <i class="bi bi-check-circle me-2"></i>Crea Panino
+                        <i class="bi bi-check-circle me-2"></i>Salva Modifiche
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="clearSandwich()">
-                        <i class="bi bi-arrow-clockwise me-2"></i>Cancella Tutto
+                    <button type="button" class="btn btn-outline-warning" onclick="resetToOriginal()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Ripristina Originale
                     </button>
                 </div>
             </div>
@@ -283,11 +273,17 @@
 
 {% block scripts %}
 <script>
-class SandwichComposer {
+// Existing ingredient data for editing
+const existingIngredients = {{ current_ingredients | tojson }};
+const productName = "{{ product.name }}";
+
+class SandwichEditor {
     constructor() {
         this.selectedIngredients = new Map();
+        this.originalIngredients = new Map();
         this.totalCost = 0;
         this.init();
+        this.loadExistingIngredients();
     }
     
     init() {
@@ -296,6 +292,37 @@ class SandwichComposer {
         this.setupCategoryTabs();
     }
     
+    loadExistingIngredients() {
+        // Load existing ingredients from the product
+        Object.entries(existingIngredients).forEach(([ingredientId, quantity]) => {
+            const ingredientElement = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
+            if (ingredientElement) {
+                const ingredient = {
+                    id: ingredientId,
+                    name: ingredientElement.dataset.ingredientName,
+                    price: parseFloat(ingredientElement.dataset.ingredientPrice),
+                    unit: ingredientElement.dataset.ingredientUnit,
+                    category: ingredientElement.dataset.ingredientCategory
+                };
+                
+                this.selectedIngredients.set(ingredientId, { 
+                    ...ingredient, 
+                    quantity: quantity,
+                    originalUnit: ingredient.unit,
+                    displayUnit: ingredient.unit 
+                });
+                this.originalIngredients.set(ingredientId, { ...ingredient, quantity: quantity });
+                this.renderSandwichLayer(ingredient, quantity);
+                ingredientElement.classList.add('selected');
+            }
+        });
+        
+        this.updateCostCalculation();
+        this.updateFormInputs();
+        this.updateVisualPreview();
+    }
+    
+    // Copy the same methods from create_sandwich.html but with modifications for editing
     setupEventListeners() {
         // Add ingredient buttons
         document.querySelectorAll('.add-ingredient').forEach(btn => {
@@ -319,46 +346,21 @@ class SandwichComposer {
     }
     
     setupDragAndDrop() {
-        // Make ingredient items draggable
         document.querySelectorAll('.ingredient-item').forEach(item => {
             item.addEventListener('dragstart', this.handleDragStart.bind(this));
-            
-            // Add touch support for mobile devices
-            item.addEventListener('touchstart', this.handleTouchStart.bind(this), {passive: false});
-            item.addEventListener('touchmove', this.handleTouchMove.bind(this), {passive: false});
-            item.addEventListener('touchend', this.handleTouchEnd.bind(this), {passive: false});
         });
         
-        // Setup drop zone
         const sandwichBuilder = document.getElementById('sandwich-builder');
         sandwichBuilder.addEventListener('dragover', this.handleDragOver.bind(this));
         sandwichBuilder.addEventListener('drop', this.handleDrop.bind(this));
         
-        // Touch support for drop zone
-        sandwichBuilder.addEventListener('touchmove', this.handleDropZoneTouchMove.bind(this), {passive: false});
-        
-        // Setup sortable for reordering
         if (typeof Sortable !== 'undefined') {
             new Sortable(sandwichBuilder, {
                 animation: 150,
                 handle: '.drag-handle',
-                touchStartThreshold: 10,
                 onEnd: this.updateVisualPreview.bind(this)
             });
         }
-        
-        // Initialize touch drag state
-        this.touchDragState = {
-            isDragging: false,
-            draggedElement: null,
-            draggedId: null,
-            startX: 0,
-            startY: 0,
-            currentX: 0,
-            currentY: 0,
-            offsetX: 0,
-            offsetY: 0
-        };
     }
     
     setupCategoryTabs() {
@@ -367,7 +369,6 @@ class SandwichComposer {
                 e.preventDefault();
                 this.filterByCategory(e.target.dataset.category);
                 
-                // Update active tab
                 document.querySelectorAll('[data-category]').forEach(t => t.classList.remove('active'));
                 e.target.classList.add('active');
             });
@@ -390,156 +391,6 @@ class SandwichComposer {
         this.addIngredient(ingredientId);
     }
     
-    // Touch event handlers for mobile drag & drop
-    handleTouchStart(e) {
-        e.preventDefault();
-        
-        const touch = e.touches[0];
-        const element = e.currentTarget;
-        const rect = element.getBoundingClientRect();
-        
-        this.touchDragState = {
-            isDragging: true,
-            draggedElement: element.cloneNode(true),
-            draggedId: element.dataset.ingredientId,
-            startX: touch.clientX,
-            startY: touch.clientY,
-            currentX: touch.clientX,
-            currentY: touch.clientY,
-            offsetX: touch.clientX - rect.left,
-            offsetY: touch.clientY - rect.top
-        };
-        
-        // Style the dragged element
-        this.touchDragState.draggedElement.style.position = 'fixed';
-        this.touchDragState.draggedElement.style.zIndex = '1000';
-        this.touchDragState.draggedElement.style.pointerEvents = 'none';
-        this.touchDragState.draggedElement.style.opacity = '0.8';
-        this.touchDragState.draggedElement.style.transform = 'rotate(5deg) scale(1.05)';
-        this.touchDragState.draggedElement.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
-        
-        // Position the dragged element
-        this.touchDragState.draggedElement.style.left = `${this.touchDragState.currentX - this.touchDragState.offsetX}px`;
-        this.touchDragState.draggedElement.style.top = `${this.touchDragState.currentY - this.touchDragState.offsetY}px`;
-        
-        document.body.appendChild(this.touchDragState.draggedElement);
-        
-        // Add visual feedback to original element
-        element.style.opacity = '0.5';
-        
-        // Add drag class to sandbox builder
-        document.getElementById('sandwich-builder').classList.add('touch-drag-active');
-    }
-    
-    handleTouchMove(e) {
-        if (!this.touchDragState.isDragging) return;
-        
-        e.preventDefault();
-        
-        const touch = e.touches[0];
-        this.touchDragState.currentX = touch.clientX;
-        this.touchDragState.currentY = touch.clientY;
-        
-        // Update dragged element position
-        this.touchDragState.draggedElement.style.left = `${this.touchDragState.currentX - this.touchDragState.offsetX}px`;
-        this.touchDragState.draggedElement.style.top = `${this.touchDragState.currentY - this.touchDragState.offsetY}px`;
-        
-        // Check if over drop zone
-        const sandwichBuilder = document.getElementById('sandwich-builder');
-        const builderRect = sandwichBuilder.getBoundingClientRect();
-        
-        const isOverDropZone = 
-            this.touchDragState.currentX >= builderRect.left &&
-            this.touchDragState.currentX <= builderRect.right &&
-            this.touchDragState.currentY >= builderRect.top &&
-            this.touchDragState.currentY <= builderRect.bottom;
-        
-        // Visual feedback for drop zone
-        if (isOverDropZone) {
-            sandwichBuilder.classList.add('touch-drag-over');
-        } else {
-            sandwichBuilder.classList.remove('touch-drag-over');
-        }
-    }
-    
-    handleTouchEnd(e) {
-        if (!this.touchDragState.isDragging) return;
-        
-        e.preventDefault();
-        
-        const sandwichBuilder = document.getElementById('sandwich-builder');
-        const builderRect = sandwichBuilder.getBoundingClientRect();
-        
-        // Check if dropped on the sandwich builder
-        const isOverDropZone = 
-            this.touchDragState.currentX >= builderRect.left &&
-            this.touchDragState.currentX <= builderRect.right &&
-            this.touchDragState.currentY >= builderRect.top &&
-            this.touchDragState.currentY <= builderRect.bottom;
-        
-        if (isOverDropZone && this.touchDragState.draggedId) {
-            // Add ingredient with visual feedback
-            this.addIngredient(this.touchDragState.draggedId);
-            
-            // Success animation
-            this.touchDragState.draggedElement.style.transform = 'scale(1.2)';
-            this.touchDragState.draggedElement.style.opacity = '0';
-            
-            setTimeout(() => {
-                if (this.touchDragState.draggedElement.parentNode) {
-                    this.touchDragState.draggedElement.remove();
-                }
-            }, 200);
-        } else {
-            // Return to original position animation
-            const originalElement = document.querySelector(`[data-ingredient-id="${this.touchDragState.draggedId}"]`);
-            if (originalElement) {
-                const originalRect = originalElement.getBoundingClientRect();
-                this.touchDragState.draggedElement.style.transition = 'all 0.3s ease';
-                this.touchDragState.draggedElement.style.left = `${originalRect.left}px`;
-                this.touchDragState.draggedElement.style.top = `${originalRect.top}px`;
-                this.touchDragState.draggedElement.style.transform = 'rotate(0deg) scale(1)';
-                this.touchDragState.draggedElement.style.opacity = '0';
-                
-                setTimeout(() => {
-                    if (this.touchDragState.draggedElement.parentNode) {
-                        this.touchDragState.draggedElement.remove();
-                    }
-                }, 300);
-            } else {
-                this.touchDragState.draggedElement.remove();
-            }
-        }
-        
-        // Cleanup
-        const originalElement = document.querySelector(`[data-ingredient-id="${this.touchDragState.draggedId}"]`);
-        if (originalElement) {
-            originalElement.style.opacity = '1';
-        }
-        
-        sandwichBuilder.classList.remove('touch-drag-active', 'touch-drag-over');
-        
-        // Reset drag state
-        this.touchDragState = {
-            isDragging: false,
-            draggedElement: null,
-            draggedId: null,
-            startX: 0,
-            startY: 0,
-            currentX: 0,
-            currentY: 0,
-            offsetX: 0,
-            offsetY: 0
-        };
-    }
-    
-    handleDropZoneTouchMove(e) {
-        // Prevent scrolling when dragging over the drop zone
-        if (this.touchDragState.isDragging) {
-            e.preventDefault();
-        }
-    }
-    
     addIngredient(ingredientId) {
         const ingredientElement = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
         if (!ingredientElement) return;
@@ -552,9 +403,8 @@ class SandwichComposer {
             category: ingredientElement.dataset.ingredientCategory
         };
         
-        // Check if already added
         if (this.selectedIngredients.has(ingredientId)) {
-            this.showAlert('Ingredient already added to sandwich', 'warning');
+            this.showAlert('Ingrediente già aggiunto alla ricetta', 'warning');
             return;
         }
         
@@ -569,9 +419,8 @@ class SandwichComposer {
         this.updateFormInputs();
         this.updateVisualPreview();
         
-        // Visual feedback
         ingredientElement.classList.add('selected');
-        this.showAlert(`${ingredient.name} added to sandwich`, 'success', 2000);
+        this.showAlert(`${ingredient.name} aggiunto alla ricetta`, 'success', 2000);
     }
     
     removeIngredient(ingredientId) {
@@ -579,10 +428,8 @@ class SandwichComposer {
             const ingredient = this.selectedIngredients.get(ingredientId);
             this.selectedIngredients.delete(ingredientId);
             
-            // Remove from DOM
             document.querySelector(`#layer-${ingredientId}`)?.remove();
             
-            // Update visual state
             const ingredientElement = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
             ingredientElement?.classList.remove('selected');
             
@@ -590,16 +437,12 @@ class SandwichComposer {
             this.updateFormInputs();
             this.updateVisualPreview();
             
-            this.showAlert(`${ingredient.name} removed from sandwich`, 'info', 2000);
+            this.showAlert(`${ingredient.name} rimosso dalla ricetta`, 'info', 2000);
         }
     }
     
-    renderSandwichLayer(ingredient) {
+    renderSandwichLayer(ingredient, initialQuantity = 1) {
         const sandwichBuilder = document.getElementById('sandwich-builder');
-        
-        // Remove empty state
-        const dropZone = sandwichBuilder.querySelector('.drop-zone');
-        if (dropZone) dropZone.remove();
         
         const layer = document.createElement('div');
         layer.className = `sandwich-layer ${ingredient.category.toLowerCase()}`;
@@ -612,7 +455,7 @@ class SandwichComposer {
                     </div>
                     <div>
                         <div class="fw-medium">${ingredient.name}</div>
-                        <small class="text-muted">€${ingredient.price.toFixed(3)} / ${ingredient.unit}</small>
+                        <small class="text-muted">€${ingredient.price.toFixed(7)} / ${ingredient.unit}</small>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -620,7 +463,7 @@ class SandwichComposer {
                         <button type="button" class="btn btn-sm btn-outline-danger quantity-decrease" 
                                 data-ingredient-id="${ingredient.id}">-</button>
                         <input type="number" class="form-control form-control-sm text-center quantity-input" 
-                               value="1" 
+                               value="${initialQuantity}" 
                                step="0.1" 
                                min="0.1"
                                style="width: 70px; -webkit-appearance: none; -moz-appearance: textfield;"
@@ -641,8 +484,16 @@ class SandwichComposer {
         
         sandwichBuilder.appendChild(layer);
         
-        // Add quantity change listener
+        this.attachLayerEventListeners(layer, ingredient);
+    }
+    
+    attachLayerEventListeners(layer, ingredient) {
         const quantityInput = layer.querySelector('.quantity-input');
+        const decreaseBtn = layer.querySelector('.quantity-decrease');
+        const increaseBtn = layer.querySelector('.quantity-increase');
+        const removeBtn = layer.querySelector('.btn-danger');
+        const unitSelector = layer.querySelector('.unit-selector');
+        
         quantityInput.addEventListener('input', () => {
             const quantity = parseFloat(quantityInput.value) || 0;
             if (this.selectedIngredients.has(ingredient.id)) {
@@ -651,11 +502,6 @@ class SandwichComposer {
                 this.updateFormInputs();
             }
         });
-        
-        // Add +/- button listeners
-        const decreaseBtn = layer.querySelector('.quantity-decrease');
-        const increaseBtn = layer.querySelector('.quantity-increase');
-        const removeBtn = layer.querySelector('.btn-danger');
         
         decreaseBtn.addEventListener('click', () => {
             const currentValue = parseFloat(quantityInput.value) || 0;
@@ -683,8 +529,6 @@ class SandwichComposer {
             this.removeIngredient(ingredient.id);
         });
         
-        // Add unit selector change listener
-        const unitSelector = layer.querySelector('.unit-selector');
         unitSelector.addEventListener('change', () => {
             this.handleUnitConversion(ingredient.id, unitSelector.value);
         });
@@ -697,7 +541,6 @@ class SandwichComposer {
             count: ['pieces', 'slices', 'portions']
         };
         
-        // Determine which group the current unit belongs to
         let availableUnits = [];
         if (unitGroups.weight.includes(currentUnit)) {
             availableUnits = unitGroups.weight;
@@ -713,23 +556,21 @@ class SandwichComposer {
     }
     
     handleUnitConversion(ingredientId, newUnit) {
+        // Similar to create template but adapted for editing
         const layer = document.querySelector(`#layer-${ingredientId}`);
         const quantityInput = layer.querySelector('.quantity-input');
         const currentQuantity = parseFloat(quantityInput.value) || 0;
         const currentUnit = layer.querySelector('.unit-selector').getAttribute('data-current-unit') || 
                            this.selectedIngredients.get(ingredientId).unit;
         
-        // Convert quantity to new unit
         const convertedQuantity = this.convertQuantity(currentQuantity, currentUnit, newUnit);
         quantityInput.value = convertedQuantity;
         
-        // Update the stored ingredient unit and quantity
         if (this.selectedIngredients.has(ingredientId)) {
             this.selectedIngredients.get(ingredientId).quantity = convertedQuantity;
             this.selectedIngredients.get(ingredientId).displayUnit = newUnit;
         }
         
-        // Store current unit for future conversions
         layer.querySelector('.unit-selector').setAttribute('data-current-unit', newUnit);
         
         this.updateCostCalculation();
@@ -739,36 +580,24 @@ class SandwichComposer {
     convertQuantity(quantity, fromUnit, toUnit) {
         if (fromUnit === toUnit) return quantity;
         
-        // Weight conversions (all to grams, then to target)
         const weightToGrams = {
-            'kg': 1000,
-            'hg': 100,
-            'dag': 10,
-            'g': 1,
-            'dg': 0.1
+            'kg': 1000, 'hg': 100, 'dag': 10, 'g': 1, 'dg': 0.1
         };
         
-        // Volume conversions (all to milliliters, then to target)
         const volumeToMl = {
-            'l': 1000,
-            'dl': 100,
-            'cl': 10,
-            'ml': 1
+            'l': 1000, 'dl': 100, 'cl': 10, 'ml': 1
         };
         
-        // Convert weight units
         if (weightToGrams[fromUnit] && weightToGrams[toUnit]) {
             const grams = quantity * weightToGrams[fromUnit];
             return parseFloat((grams / weightToGrams[toUnit]).toFixed(3));
         }
         
-        // Convert volume units
         if (volumeToMl[fromUnit] && volumeToMl[toUnit]) {
             const ml = quantity * volumeToMl[fromUnit];
             return parseFloat((ml / volumeToMl[toUnit]).toFixed(3));
         }
         
-        // No conversion needed for count units (pieces, slices, portions)
         return quantity;
     }
     
@@ -776,7 +605,6 @@ class SandwichComposer {
         this.totalCost = 0;
         
         this.selectedIngredients.forEach(ingredient => {
-            // Convert displayed quantity back to original unit for cost calculation
             const originalQuantity = this.convertQuantity(
                 ingredient.quantity, 
                 ingredient.displayUnit || ingredient.unit, 
@@ -784,10 +612,9 @@ class SandwichComposer {
             );
             const cost = ingredient.price * originalQuantity;
             this.totalCost += cost;
-            // Cost calculation completed
         });
         
-        document.getElementById('total-cost').textContent = `€${this.totalCost.toFixed(3)}`;
+        document.getElementById('total-cost').textContent = `€${this.totalCost.toFixed(7)}`;
         document.getElementById('ingredient-count').textContent = this.selectedIngredients.size;
         
         this.calculateProfit();
@@ -806,11 +633,6 @@ class SandwichComposer {
         
         percentageElement.textContent = `${profitPercentage.toFixed(1)}%`;
         percentageElement.className = `profit-display ${profitPercentage >= 0 ? 'text-white' : 'text-warning'}`;
-        
-        // Update hidden form fields
-        document.getElementById('total_cost').value = this.totalCost.toFixed(3);
-        document.getElementById('gross_profit').value = grossProfit.toFixed(2);
-        document.getElementById('gross_profit_percent').value = profitPercentage.toFixed(2);
     }
     
     updateFormInputs() {
@@ -819,7 +641,6 @@ class SandwichComposer {
         
         let index = 0;
         this.selectedIngredients.forEach((ingredient, id) => {
-            // Convert displayed quantity back to original unit for saving
             const originalQuantity = this.convertQuantity(
                 ingredient.quantity, 
                 ingredient.displayUnit || ingredient.unit, 
@@ -842,18 +663,15 @@ class SandwichComposer {
             visual.innerHTML = `
                 <div class="empty-sandwich py-5 text-center">
                     <i class="bi bi-burger display-4 text-muted"></i>
-                    <p class="text-muted mt-2">Drag ingredients here to build your sandwich</p>
+                    <p class="text-muted mt-2">Nessun ingrediente nella ricetta</p>
                 </div>
             `;
             return;
         }
         
         let previewHTML = '<div class="sandwich-stack">';
-        
-        // Add bun top
         previewHTML += '<div class="layer-preview bun">🍞 Bun Top</div>';
         
-        // Add ingredients in reverse order (top to bottom)
         const layers = Array.from(document.querySelectorAll('.sandwich-layer')).reverse();
         layers.forEach(layer => {
             const category = layer.className.match(/\b(base|protein|cheese|vegetable|sauce)\b/)?.[0] || 'other';
@@ -863,7 +681,6 @@ class SandwichComposer {
             previewHTML += `<div class="layer-preview ${category}">${emoji} ${name}</div>`;
         });
         
-        // Add bun bottom
         previewHTML += '<div class="layer-preview bun">🍞 Bun Bottom</div>';
         previewHTML += '</div>';
         
@@ -872,12 +689,8 @@ class SandwichComposer {
     
     getCategoryEmoji(category) {
         const emojis = {
-            'base': '🍞',
-            'protein': '🥩',
-            'cheese': '🧀',
-            'vegetable': '🥬',
-            'sauce': '🔴',
-            'other': '⚪'
+            'base': '🍞', 'protein': '🥩', 'cheese': '🧀', 
+            'vegetable': '🥬', 'sauce': '🔴', 'other': '⚪'
         };
         return emojis[category] || '⚪';
     }
@@ -892,7 +705,6 @@ class SandwichComposer {
             item.style.display = visible ? '' : 'none';
         });
         
-        // Show/hide categories based on visible items
         document.querySelectorAll('.ingredient-category').forEach(category => {
             const visibleItems = category.querySelectorAll('.ingredient-item:not([style*="display: none"])');
             category.style.display = visibleItems.length > 0 ? '' : 'none';
@@ -912,14 +724,12 @@ class SandwichComposer {
     }
     
     validateAndSubmit(e) {
-        // Check if at least one ingredient is selected
         if (this.selectedIngredients.size === 0) {
             e.preventDefault();
             this.showAlert('Aggiungi almeno un ingrediente alla ricetta', 'error');
             return false;
         }
         
-        // Check for required base ingredient
         const hasBase = Array.from(this.selectedIngredients.values()).some(ing => 
             ing.category === 'BASE'
         );
@@ -930,10 +740,8 @@ class SandwichComposer {
             return false;
         }
         
-        // Validate required fields
         const requiredFields = {
             'name': 'Nome ricetta',
-            'product_code_id': 'ID Codice Prodotto',
             'restaurant_id': 'ID Ristorante',
             'delivery_price_id': 'ID Prezzo Delivery',
             'selling_price': 'Prezzo di Vendita',
@@ -948,22 +756,6 @@ class SandwichComposer {
                 field.focus();
                 return false;
             }
-        }
-        
-        // Validate price format
-        const sellingPrice = parseFloat(document.getElementById('selling_price').value);
-        const foodPaperCost = parseFloat(document.getElementById('food_paper_cost_total').value);
-        
-        if (isNaN(sellingPrice) || sellingPrice <= 0 || sellingPrice > 999.9999999) {
-            e.preventDefault();
-            this.showAlert('Il prezzo di vendita deve essere un numero valido tra 0 e 999.9999999', 'error');
-            return false;
-        }
-        
-        if (isNaN(foodPaperCost) || foodPaperCost <= 0 || foodPaperCost > 999.9999999) {
-            e.preventDefault();
-            this.showAlert('Il Food + Paper Cost deve essere un numero valido tra 0 e 999.9999999', 'error');
-            return false;
         }
         
         return true;
@@ -1002,35 +794,23 @@ class SandwichComposer {
     }
 }
 
-// Initialize composer
-let sandwichComposer;
+// Initialize editor
+let sandwichEditor;
 document.addEventListener('DOMContentLoaded', () => {
-    sandwichComposer = new SandwichComposer();
+    sandwichEditor = new SandwichEditor();
 });
 
 // Global functions
-function clearSandwich() {
-    if (confirm('Are you sure you want to clear all ingredients?')) {
-        sandwichComposer.selectedIngredients.clear();
-        document.getElementById('sandwich-builder').innerHTML = `
-            <div class="drop-zone text-center p-4">
-                <i class="bi bi-plus-circle display-6 text-muted"></i>
-                <p class="text-muted mt-2 mb-0">Drop ingredients here or use the + button</p>
-            </div>
-        `;
-        sandwichComposer.updateCostCalculation();
-        sandwichComposer.updateFormInputs();
-        sandwichComposer.updateVisualPreview();
-        
-        // Remove selected state from ingredient items
-        document.querySelectorAll('.ingredient-item.selected').forEach(item => {
-            item.classList.remove('selected');
-        });
+function resetToOriginal() {
+    if (confirm('Sei sicuro di voler ripristinare la ricetta originale? Tutte le modifiche andranno perse.')) {
+        location.reload();
     }
 }
 </script>
 
+<!-- Reuse CSS from create_sandwich.html -->
 <style>
+/* Copy the same styles from create_sandwich.html */
 .sandwich-layer {
     margin: 0.5rem 0;
     padding: 1rem;
@@ -1100,88 +880,6 @@ function clearSandwich() {
     background-color: rgba(13, 110, 253, 0.05);
 }
 
-.drop-zone {
-    border: 2px dashed #dee2e6;
-    border-radius: 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.sandwich-builder.drag-over .drop-zone,
-.sandwich-builder.touch-drag-over {
-    border-color: var(--bs-primary);
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-.sandwich-builder.touch-drag-active {
-    border: 2px solid var(--bs-primary);
-    background-color: rgba(13, 110, 253, 0.02);
-    transform: scale(1.02);
-    transition: all 0.3s ease;
-}
-
-.sandwich-builder.touch-drag-over {
-    border-color: var(--bs-success) !important;
-    background-color: rgba(25, 135, 84, 0.1) !important;
-    transform: scale(1.05) !important;
-}
-
-.ingredient-item.touch-dragging {
-    opacity: 0.5;
-    transform: scale(0.95);
-    transition: all 0.2s ease;
-}
-
-/* Touch drag ghost element styles */
-.ingredient-item[style*="position: fixed"] {
-    border: 2px solid var(--bs-primary);
-    background: white;
-    border-radius: 0.75rem;
-    box-shadow: 0 12px 35px rgba(0,0,0,0.25);
-    z-index: 1000;
-}
-
-/* Improved touch targets for mobile */
-@media (max-width: 768px) {
-    .ingredient-item {
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        min-height: 60px;
-        border-width: 2px;
-    }
-    
-    .add-ingredient {
-        min-width: 44px;
-        min-height: 44px;
-        padding: 0.5rem;
-    }
-    
-    .drag-handle {
-        font-size: 1.5rem;
-        padding: 0.5rem;
-        margin-right: 0.75rem !important;
-    }
-    
-    .sandwich-builder {
-        min-height: 300px;
-        border-width: 3px;
-        border-style: dashed;
-    }
-    
-    .drop-zone {
-        padding: 2rem !important;
-        min-height: 250px;
-    }
-    
-    .drop-zone i {
-        font-size: 4rem !important;
-    }
-    
-    .drop-zone p {
-        font-size: 1.1rem;
-        font-weight: 500;
-    }
-}
-
 .nav-pills .nav-link {
     font-size: 0.875rem;
     padding: 0.5rem 0.75rem;
@@ -1205,62 +903,18 @@ function clearSandwich() {
     box-shadow: none;
 }
 
-.layer-remove {
-    background: rgba(220, 53, 69, 0.8);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.layer-remove:hover {
-    background: var(--bs-danger);
-    transform: scale(1.1);
-}
-
 @media (max-width: 768px) {
     .sandwich-layer {
-        padding: 1rem;
-        margin: 0.75rem 0;
-        border-width: 2px;
+        padding: 0.75rem;
     }
     
     .quantity-input {
-        width: 70px !important;
-        min-height: 44px;
+        width: 60px !important;
     }
     
     .nav-pills .nav-link {
-        font-size: 0.875rem;
-        padding: 0.75rem 1rem;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .quantity-control .btn {
-        min-width: 44px;
-        min-height: 44px;
-        font-size: 1.25rem;
-        font-weight: bold;
-    }
-    
-    .unit-selector {
-        min-height: 44px;
-        font-size: 0.875rem !important;
-    }
-    
-    .ingredient-search {
-        font-size: 1rem;
-        min-height: 44px;
+        font-size: 0.75rem;
+        padding: 0.375rem 0.5rem;
     }
 }
 </style>
