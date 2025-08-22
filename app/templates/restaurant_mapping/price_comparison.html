@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Confronto Prezzi - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-graph-up me-2 text-primary"></i>Confronto Prezzi
+                    </h1>
+                    <p class="text-muted mb-0">Analizza e confronta i prezzi dei prodotti tra i ristoranti</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('restaurant_mapping.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Torna alla Mappa
+                    </a>
+                    <button class="btn btn-outline-primary" onclick="exportComparison()">
+                        <i class="bi bi-download me-1"></i>Esporta CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="product-filter" class="form-label">Filtra per Prodotto</label>
+                            <input type="text" class="form-control" id="product-filter" 
+                                   placeholder="Cerca prodotti...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="category-filter" class="form-label">Categoria</label>
+                            <select class="form-select" id="category-filter">
+                                <option value="">Tutte le categorie</option>
+                                <option value="sandwich">Panini</option>
+                                <option value="menu">Menu</option>
+                                <option value="side">Contorni</option>
+                                <option value="drink">Bevande</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sort-filter" class="form-label">Ordina per</label>
+                            <select class="form-select" id="sort-filter">
+                                <option value="name">Nome Prodotto</option>
+                                <option value="min_price">Prezzo Minimo</option>
+                                <option value="max_price">Prezzo Massimo</option>
+                                <option value="price_range">Variazione Prezzo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="applyFilters()">
+                                <i class="bi bi-funnel me-1"></i>Applica
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Results -->
+    {% if comparison_data %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-table me-2"></i>Confronto Prezzi ({{ comparison_data|length }} prodotti)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="comparison-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 25%">Prodotto</th>
+                                    <th style="width: 15%">Categoria</th>
+                                    <th style="width: 40%">Prezzi per Ristorante</th>
+                                    <th style="width: 10%">Min/Max</th>
+                                    <th style="width: 10%">Variazione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in comparison_data %}
+                                <tr class="comparison-row" 
+                                    data-product-name="{{ item.product.name.lower() }}"
+                                    data-product-category="{{ item.product.product_type.lower() }}"
+                                    data-min-price="{{ item.min_price }}"
+                                    data-max-price="{{ item.max_price }}"
+                                    data-price-range="{{ item.price_range }}">
+                                    <td>
+                                        <div>
+                                            <strong>{{ item.product.name }}</strong>
+                                            <br><small class="text-muted">#{{ item.product.id }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ item.product.product_type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="restaurant-prices">
+                                            {% for listing in item.listings %}
+                                            <div class="price-item mb-1 p-2 bg-light rounded">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <strong>{{ listing.restaurant_name }}</strong>
+                                                        <small class="text-muted">({{ listing.city }})</small>
+                                                        {% if not listing.is_available %}
+                                                        <span class="badge bg-warning ms-1">Non Disponibile</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <div>
+                                                            <span class="fw-bold text-primary">
+                                                                €{{ "%.2f"|format(listing.local_price) }}
+                                                            </span>
+                                                            <small class="text-muted">locale</small>
+                                                        </div>
+                                                        <div>
+                                                            <span class="fw-bold text-info">
+                                                                €{{ "%.2f"|format(listing.delivery_price) }}
+                                                            </span>
+                                                            <small class="text-muted">delivery</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-center">
+                                            <div class="fw-bold text-success">
+                                                €{{ "%.2f"|format(item.min_price) }}
+                                            </div>
+                                            <small class="text-muted">minimo</small>
+                                            <hr class="my-1">
+                                            <div class="fw-bold text-danger">
+                                                €{{ "%.2f"|format(item.max_price) }}
+                                            </div>
+                                            <small class="text-muted">massimo</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-center">
+                                            {% if item.price_range > 0 %}
+                                            <div class="fw-bold text-warning">
+                                                €{{ "%.2f"|format(item.price_range) }}
+                                            </div>
+                                            <small class="text-muted">differenza</small>
+                                            <div class="mt-1">
+                                                {% set percentage = ((item.price_range / item.min_price) * 100) if item.min_price > 0 else 0 %}
+                                                <span class="badge bg-warning">
+                                                    +{{ "%.1f"|format(percentage) }}%
+                                                </span>
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Statistiche Riepilogative
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="summary-stats">
+                        <!-- Stats will be calculated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-graph-up display-1 text-muted opacity-50"></i>
+                    <h3 class="mt-3">Nessun Dato di Confronto</h3>
+                    <p class="text-muted">
+                        Non ci sono prodotti con listini configurati per il confronto prezzi.
+                    </p>
+                    <div class="mt-3">
+                        <a href="{{ url_for('restaurant_mapping.restaurants') }}" class="btn btn-primary">
+                            <i class="bi bi-building me-2"></i>Gestisci Ristoranti
+                        </a>
+                        <a href="{{ url_for('main.create_sandwich') }}" class="btn btn-outline-primary ms-2">
+                            <i class="bi bi-plus-circle me-2"></i>Crea Prodotti
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let originalData = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Store original data for filtering
+    const rows = document.querySelectorAll('.comparison-row');
+    rows.forEach(row => {
+        originalData.push({
+            element: row,
+            name: row.dataset.productName,
+            category: row.dataset.productCategory,
+            minPrice: parseFloat(row.dataset.minPrice),
+            maxPrice: parseFloat(row.dataset.maxPrice),
+            priceRange: parseFloat(row.dataset.priceRange)
+        });
+    });
+    
+    calculateSummaryStats();
+    
+    // Set up real-time filtering
+    document.getElementById('product-filter').addEventListener('input', applyFilters);
+    document.getElementById('category-filter').addEventListener('change', applyFilters);
+    document.getElementById('sort-filter').addEventListener('change', applyFilters);
+});
+
+function applyFilters() {
+    const productFilter = document.getElementById('product-filter').value.toLowerCase();
+    const categoryFilter = document.getElementById('category-filter').value.toLowerCase();
+    const sortBy = document.getElementById('sort-filter').value;
+    
+    // Filter data
+    let filteredData = originalData.filter(item => {
+        const nameMatch = !productFilter || item.name.includes(productFilter);
+        const categoryMatch = !categoryFilter || item.category === categoryFilter;
+        return nameMatch && categoryMatch;
+    });
+    
+    // Sort data
+    filteredData.sort((a, b) => {
+        switch(sortBy) {
+            case 'name':
+                return a.name.localeCompare(b.name);
+            case 'min_price':
+                return a.minPrice - b.minPrice;
+            case 'max_price':
+                return b.maxPrice - a.maxPrice;
+            case 'price_range':
+                return b.priceRange - a.priceRange;
+            default:
+                return 0;
+        }
+    });
+    
+    // Update table
+    const tbody = document.querySelector('#comparison-table tbody');
+    tbody.innerHTML = '';
+    
+    filteredData.forEach(item => {
+        tbody.appendChild(item.element);
+    });
+    
+    // Update stats
+    calculateSummaryStats(filteredData);
+}
+
+function calculateSummaryStats(data = originalData) {
+    if (data.length === 0) return;
+    
+    const totalProducts = data.length;
+    const avgMinPrice = data.reduce((sum, item) => sum + item.minPrice, 0) / totalProducts;
+    const avgMaxPrice = data.reduce((sum, item) => sum + item.maxPrice, 0) / totalProducts;
+    const avgPriceRange = data.reduce((sum, item) => sum + item.priceRange, 0) / totalProducts;
+    const maxVariation = Math.max(...data.map(item => item.priceRange));
+    
+    const highVariationCount = data.filter(item => item.priceRange > avgPriceRange).length;
+    
+    const statsContainer = document.getElementById('summary-stats');
+    statsContainer.innerHTML = `
+        <div class="col-md-2">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h4>${totalProducts}</h4>
+                    <small>Prodotti Confrontati</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h4>€${avgMinPrice.toFixed(2)}</h4>
+                    <small>Prezzo Min Medio</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h4>€${avgMaxPrice.toFixed(2)}</h4>
+                    <small>Prezzo Max Medio</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h4>€${avgPriceRange.toFixed(2)}</h4>
+                    <small>Variazione Media</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h4>€${maxVariation.toFixed(2)}</h4>
+                    <small>Max Variazione</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h4>${highVariationCount}</h4>
+                    <small>Alta Variazione</small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function exportComparison() {
+    // Generate CSV content
+    let csv = 'Prodotto,Categoria,Ristorante,Città,Prezzo Locale,Prezzo Delivery,Markup,Disponibile\\n';
+    
+    const rows = document.querySelectorAll('.comparison-row:not([style*="display: none"])');
+    rows.forEach(row => {
+        const productName = row.querySelector('strong').textContent;
+        const category = row.querySelector('.badge').textContent;
+        
+        const priceItems = row.querySelectorAll('.price-item');
+        priceItems.forEach(item => {
+            const restaurantName = item.querySelector('strong').textContent;
+            const city = item.querySelector('.text-muted').textContent.replace(/[()]/g, '');
+            const isAvailable = !item.querySelector('.badge.bg-warning');
+            
+            const prices = item.querySelectorAll('.fw-bold');
+            const localPrice = prices[0].textContent.replace('€', '');
+            const deliveryPrice = prices[1].textContent.replace('€', '');
+            const markup = (parseFloat(deliveryPrice) - parseFloat(localPrice)).toFixed(2);
+            
+            csv += `"${productName}","${category}","${restaurantName}","${city}",${localPrice},${deliveryPrice},${markup},"${isAvailable ? 'Sì' : 'No'}"\\n`;
+        });
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `confronto_prezzi_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

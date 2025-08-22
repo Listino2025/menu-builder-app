@@ -27,7 +27,7 @@ def create_app(config_name=None):
     login_manager.login_message_category = 'info'
     
     # Import models
-    from app.models import User, Ingredient, Product, ProductIngredient
+    from app.models import User, Ingredient, Product, ProductIngredient, Restaurant, ProductListing
     
     # Register blueprints
     from app.auth import bp as auth_bp
@@ -38,6 +38,9 @@ def create_app(config_name=None):
     
     from app.api import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    from app.routes.restaurant_mapping import bp as restaurant_mapping_bp
+    app.register_blueprint(restaurant_mapping_bp)
     
     # User loader for Flask-Login
     @login_manager.user_loader

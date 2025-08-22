@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Nuovo Ristorante - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-plus-circle me-2 text-primary"></i>Nuovo Ristorante
+                    </h1>
+                    <p class="text-muted mb-0">Aggiungi un nuovo ristorante al sistema</p>
+                </div>
+                <a href="{{ url_for('restaurant_mapping.restaurants') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Torna ai Ristoranti
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Form -->
+        <div class="col-12 col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-building me-2"></i>Informazioni Ristorante
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="restaurantForm" method="POST" class="needs-validation" novalidate>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="name" class="form-label">Nome Ristorante *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                                <div class="invalid-feedback">
+                                    Inserisci il nome del ristorante.
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="restaurant_code" class="form-label">Codice Ristorante *</label>
+                                <input type="text" class="form-control" id="restaurant_code" name="restaurant_code" 
+                                       placeholder="es. REST_ROMA_001" required>
+                                <div class="invalid-feedback">
+                                    Inserisci un codice univoco.
+                                </div>
+                                <small class="text-muted">Codice identificativo univoco</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="address" class="form-label">Indirizzo *</label>
+                                <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
+                                <div class="invalid-feedback">
+                                    Inserisci l'indirizzo completo.
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="city" class="form-label">Città *</label>
+                                <input type="text" class="form-control" id="city" name="city" required>
+                                <div class="invalid-feedback">
+                                    Inserisci la città.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="postal_code" class="form-label">CAP</label>
+                                <input type="text" class="form-control" id="postal_code" name="postal_code" 
+                                       placeholder="00100">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="phone" class="form-label">Telefono</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       placeholder="+39 06 1234567">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="restaurant@example.com">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="latitude" class="form-label">Latitudine GPS</label>
+                                <input type="number" class="form-control" id="latitude" name="latitude" 
+                                       step="0.000001" min="-90" max="90" placeholder="41.902782">
+                                <small class="text-muted">Coordinate GPS per la mappa (es. 41.902782)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="longitude" class="form-label">Longitudine GPS</label>
+                                <input type="number" class="form-control" id="longitude" name="longitude" 
+                                       step="0.000001" min="-180" max="180" placeholder="12.496366">
+                                <small class="text-muted">Coordinate GPS per la mappa (es. 12.496366)</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="opening_hours" class="form-label">Orari di Apertura</label>
+                            <textarea class="form-control" id="opening_hours" name="opening_hours" rows="4"
+                                      placeholder='{"monday": {"open": "09:00", "close": "22:00"}, "tuesday": {"open": "09:00", "close": "22:00"}, "closed": ["sunday"]}'></textarea>
+                            <small class="text-muted">
+                                Formato JSON (opzionale). Esempio: 
+                                <code>{"monday": {"open": "09:00", "close": "22:00"}, "sunday": "closed"}</code>
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>Salva Ristorante
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Reset Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Preview & Tools -->
+        <div class="col-12 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-geo-alt me-2"></i>Anteprima Mappa
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="preview-map" style="height: 300px; width: 100%;">
+                        <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
+                            <div class="text-center">
+                                <i class="bi bi-geo-alt display-4 opacity-50"></i>
+                                <p class="mt-2">Inserisci coordinate per anteprima</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label">Strumenti Geolocalizzazione</label>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="getCurrentLocation()">
+                                <i class="bi bi-crosshair me-1"></i>Usa Posizione Attuale
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="geocodeAddress()">
+                                <i class="bi bi-search me-1"></i>Geocodifica Indirizzo
+                            </button>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            Usa questi strumenti per ottenere automaticamente le coordinate GPS
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips Card -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>Suggerimenti
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><strong>Codice Ristorante:</strong> Usa un formato consistente (es. REST_CITTA_001)</li>
+                        <li><strong>Coordinate GPS:</strong> Necessarie per visualizzazione su mappa</li>
+                        <li><strong>Orari:</strong> Il formato JSON è opzionale ma permette funzionalità avanzate</li>
+                        <li><strong>Indirizzo:</strong> Inserisci l'indirizzo completo per la geocodifica automatica</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let previewMap;
+let previewMarker;
+
+// Initialize preview map
+document.addEventListener('DOMContentLoaded', function() {
+    setupFormValidation();
+    
+    // Initialize map if Google Maps is available
+    if (typeof google !== 'undefined') {
+        initializePreviewMap();
+    }
+    
+    // Listen for coordinate changes
+    document.getElementById('latitude').addEventListener('input', updateMapPreview);
+    document.getElementById('longitude').addEventListener('input', updateMapPreview);
+});
+
+function setupFormValidation() {
+    const form = document.getElementById('restaurantForm');
+    
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+}
+
+function initializePreviewMap() {
+    previewMap = new google.maps.Map(document.getElementById('preview-map'), {
+        zoom: 13,
+        center: { lat: 41.9028, lng: 12.4964 }, // Rome default
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+}
+
+function updateMapPreview() {
+    if (!previewMap) return;
+    
+    const lat = parseFloat(document.getElementById('latitude').value);
+    const lng = parseFloat(document.getElementById('longitude').value);
+    
+    if (!isNaN(lat) && !isNaN(lng)) {
+        const position = { lat: lat, lng: lng };
+        
+        // Update map center
+        previewMap.setCenter(position);
+        previewMap.setZoom(15);
+        
+        // Add or update marker
+        if (previewMarker) {
+            previewMarker.setPosition(position);
+        } else {
+            previewMarker = new google.maps.Marker({
+                position: position,
+                map: previewMap,
+                title: 'Posizione Ristorante'
+            });
+        }
+    }
+}
+
+function getCurrentLocation() {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
+            
+            updateMapPreview();
+            
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show mt-2';
+            alert.innerHTML = `
+                <i class="bi bi-check-circle me-2"></i>Posizione attuale acquisita con successo!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.card-body').appendChild(alert);
+        }, function(error) {
+            alert('Errore nella geolocalizzazione: ' + error.message);
+        });
+    } else {
+        alert('Geolocalizzazione non supportata dal browser');
+    }
+}
+
+function geocodeAddress() {
+    const address = document.getElementById('address').value;
+    const city = document.getElementById('city').value;
+    
+    if (!address || !city) {
+        alert('Inserisci prima indirizzo e città per la geocodifica');
+        return;
+    }
+    
+    if (typeof google === 'undefined') {
+        alert('Google Maps non disponibile per la geocodifica');
+        return;
+    }
+    
+    const geocoder = new google.maps.Geocoder();
+    const fullAddress = `${address}, ${city}, Italy`;
+    
+    geocoder.geocode({ address: fullAddress }, function(results, status) {
+        if (status === 'OK') {
+            const location = results[0].geometry.location;
+            const lat = location.lat();
+            const lng = location.lng();
+            
+            document.getElementById('latitude').value = lat.toFixed(6);
+            document.getElementById('longitude').value = lng.toFixed(6);
+            
+            updateMapPreview();
+            
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show mt-2';
+            alert.innerHTML = `
+                <i class="bi bi-check-circle me-2"></i>Indirizzo geocodificato con successo!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.card-body').appendChild(alert);
+        } else {
+            alert('Geocodifica fallita: ' + status);
+        }
+    });
+}
+
+function clearForm() {
+    if (confirm('Sei sicuro di voler azzerare tutti i campi?')) {
+        document.getElementById('restaurantForm').reset();
+        document.getElementById('restaurantForm').classList.remove('was-validated');
+        
+        // Clear map marker
+        if (previewMarker) {
+            previewMarker.setMap(null);
+            previewMarker = null;
+        }
+        
+        // Reset map center
+        if (previewMap) {
+            previewMap.setCenter({ lat: 41.9028, lng: 12.4964 });
+            previewMap.setZoom(13);
+        }
+    }
+}
+</script>
+
+<!-- Google Maps API -->
+<script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=geocoding">
+</script>
+{% endblock %}

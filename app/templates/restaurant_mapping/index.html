@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Mappa Ristoranti - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-geo-alt me-2 text-primary"></i>Mappa Ristoranti
+                    </h1>
+                    <p class="text-muted mb-0">Visualizza e gestisci i tuoi ristoranti su mappa interattiva</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('restaurant_mapping.restaurants') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-building me-1"></i>Gestisci Ristoranti
+                    </a>
+                    <a href="{{ url_for('restaurant_mapping.price_comparison') }}" class="btn btn-outline-info">
+                        <i class="bi bi-graph-up me-1"></i>Confronta Prezzi
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ stats.total_restaurants }}</h3>
+                            <small>Ristoranti Totali</small>
+                        </div>
+                        <i class="bi bi-building display-6 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ stats.restaurants_with_coords }}</h3>
+                            <small>Su Mappa</small>
+                        </div>
+                        <i class="bi bi-geo-alt display-6 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ stats.total_products_listed }}</h3>
+                            <small>Prodotti Listati</small>
+                        </div>
+                        <i class="bi bi-box display-6 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="mb-0">{{ stats.avg_products_per_restaurant }}</h3>
+                            <small>Media Prodotti/Ristorante</small>
+                        </div>
+                        <i class="bi bi-graph-up display-6 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Interactive Map -->
+        <div class="col-12 col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-map me-2"></i>Mappa Interattiva
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="restaurants-map" style="height: 500px; width: 100%;">
+                        <!-- Map will be loaded here -->
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                            <div class="text-center">
+                                <i class="bi bi-map display-1 opacity-50"></i>
+                                <p class="mt-2">Caricamento mappa...</p>
+                                <small class="text-muted">Assicurati di aver configurato Google Maps API</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restaurant List -->
+        <div class="col-12 col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list me-2"></i>Elenco Ristoranti
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    {% if restaurants %}
+                        {% for restaurant in restaurants %}
+                        <div class="restaurant-item border rounded p-3 mb-3" 
+                             data-restaurant-id="{{ restaurant.id }}"
+                             data-lat="{{ restaurant.latitude }}" 
+                             data-lng="{{ restaurant.longitude }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ restaurant.name }}</h6>
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-geo-alt me-1"></i>{{ restaurant.address }}, {{ restaurant.city }}
+                                    </small>
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-tag me-1"></i>{{ restaurant.restaurant_code }}
+                                    </small>
+                                    {% if restaurant.phone %}
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-telephone me-1"></i>{{ restaurant.phone }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    {% if restaurant.get_coordinates() %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </span>
+                                    {% endif %}
+                                    
+                                    {% if restaurant.is_open_now() %}
+                                    <small class="text-success"><i class="bi bi-clock"></i> Aperto</small>
+                                    {% else %}
+                                    <small class="text-danger"><i class="bi bi-clock"></i> Chiuso</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <div class="d-flex gap-1">
+                                    <a href="{{ url_for('restaurant_mapping.restaurant_detail', restaurant_id=restaurant.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Dettagli
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-info focus-restaurant-btn"
+                                            data-restaurant-id="{{ restaurant.id }}">
+                                        <i class="bi bi-crosshair"></i> Focus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-building display-4 opacity-50"></i>
+                            <p class="mt-2">Nessun ristorante configurato</p>
+                            <a href="{{ url_for('restaurant_mapping.create_restaurant') }}" 
+                               class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus-circle me-1"></i>Aggiungi Primo Ristorante
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let map;
+let markers = [];
+let restaurantsData = [];
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMap();
+    loadRestaurantsData();
+    
+    // Focus restaurant button handlers
+    document.querySelectorAll('.focus-restaurant-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const restaurantId = this.dataset.restaurantId;
+            focusRestaurant(restaurantId);
+        });
+    });
+});
+
+function initializeMap() {
+    // Check if Google Maps is available
+    if (typeof google === 'undefined') {
+        document.getElementById('restaurants-map').innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div class="text-center">
+                    <i class="bi bi-exclamation-triangle display-1 text-warning"></i>
+                    <p class="mt-2">Google Maps non disponibile</p>
+                    <small class="text-muted">Configura la API key di Google Maps</small>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Initialize map centered on Italy
+    map = new google.maps.Map(document.getElementById('restaurants-map'), {
+        zoom: 6,
+        center: { lat: 41.9028, lng: 12.4964 }, // Rome, Italy
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: [
+            // Custom map styling (optional)
+            {
+                featureType: 'poi',
+                elementType: 'labels',
+                stylers: [{ visibility: 'off' }]
+            }
+        ]
+    });
+}
+
+function loadRestaurantsData() {
+    fetch('{{ url_for("restaurant_mapping.restaurants_geojson") }}')
+        .then(response => response.json())
+        .then(data => {
+            restaurantsData = data.features;
+            addMarkersToMap(data.features);
+        })
+        .catch(error => {
+            console.error('Error loading restaurants data:', error);
+        });
+}
+
+function addMarkersToMap(features) {
+    if (!map) return;
+    
+    // Clear existing markers
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
+    
+    const bounds = new google.maps.LatLngBounds();
+    
+    features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        const props = feature.properties;
+        
+        const marker = new google.maps.Marker({
+            position: { lat: coords[1], lng: coords[0] },
+            map: map,
+            title: props.name,
+            icon: {
+                url: props.is_open ? 
+                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiMyOGE3NDUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC4xMyAyIDUgNS4xMyA1IDljMCA1LjI1IDcgMTMgNyAxM3M3LTcuNzUgNy0xM2MwLTMuODctMy4xMy03LTctN3ptMCA5LjVjLTEuMzggMC0yLjUtMS4xMi0yLjUtMi41czEuMTItMi41IDIuNS0yLjUgMi41IDEuMTIgMi41IDIuNS0xLjEyIDIuNS0yLjUgMi41eiIvPgo8L3N2Zz4=' :
+                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiNkYzM1NDUiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC4xMyAyIDUgNS4xMyA1IDljMCA1LjI1IDcgMTMgNyAxM3M3LTcuNzUgNy0xM2MwLTMuODctMy4xMy03LTctN3ptMCA5LjVjLTEuMzggMC0yLjUtMS4xMi0yLjUtMi41czEuMTItMi41IDIuNS0yLjUgMi41IDEuMTIgMi41IDIuNS0xLjEyIDIuNS0yLjUgMi41eiIvPgo8L3N2Zz4=',
+                scaledSize: new google.maps.Size(30, 30)
+            }
+        });
+        
+        // Info window
+        const infoWindow = new google.maps.InfoWindow({
+            content: `
+                <div style="max-width: 200px;">
+                    <h6 class="mb-1">${props.name}</h6>
+                    <p class="mb-1 text-muted">${props.address}<br>${props.city}</p>
+                    <p class="mb-1"><strong>Codice:</strong> ${props.restaurant_code}</p>
+                    ${props.phone ? `<p class="mb-1"><strong>Tel:</strong> ${props.phone}</p>` : ''}
+                    <p class="mb-2">
+                        <span class="badge ${props.is_open ? 'bg-success' : 'bg-danger'}">
+                            ${props.is_open ? 'Aperto' : 'Chiuso'}
+                        </span>
+                        <span class="badge bg-info ms-1">${props.listings_count} prodotti</span>
+                    </p>
+                    <a href="/restaurant-mapping/restaurants/${props.id}" class="btn btn-sm btn-primary">
+                        Visualizza Dettagli
+                    </a>
+                </div>
+            `
+        });
+        
+        marker.addListener('click', () => {
+            // Close other info windows
+            markers.forEach(m => m.infoWindow && m.infoWindow.close());
+            infoWindow.open(map, marker);
+        });
+        
+        marker.infoWindow = infoWindow;
+        markers.push(marker);
+        bounds.extend(marker.position);
+    });
+    
+    // Fit map to show all markers
+    if (markers.length > 0) {
+        map.fitBounds(bounds);
+        if (markers.length === 1) {
+            map.setZoom(15);
+        }
+    }
+}
+
+function focusRestaurant(restaurantId) {
+    const restaurant = restaurantsData.find(r => r.properties.id == restaurantId);
+    if (restaurant && map) {
+        const coords = restaurant.geometry.coordinates;
+        map.setCenter({ lat: coords[1], lng: coords[0] });
+        map.setZoom(15);
+        
+        // Open info window for this restaurant
+        const marker = markers.find(m => 
+            m.position.lat() === coords[1] && m.position.lng() === coords[0]
+        );
+        if (marker && marker.infoWindow) {
+            marker.infoWindow.open(map, marker);
+        }
+    }
+}
+</script>
+
+<!-- Google Maps API - Replace YOUR_API_KEY with actual key -->
+<script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initializeMap">
+</script>
+{% endblock %}

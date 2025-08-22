@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Importazione CSV - Menu Builder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-upload me-2 text-primary"></i>Importazione CSV
+                    </h1>
+                    <p class="text-muted mb-0">Importa ristoranti e listini prezzi da file CSV</p>
+                </div>
+                <a href="{{ url_for('restaurant_mapping.restaurants') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Torna ai Ristoranti
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Import Restaurants -->
+        <div class="col-12 col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-building me-2"></i>Importa Ristoranti
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Formato file CSV richiesto:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Colonna</th>
+                                        <th>Obbligatorio</th>
+                                        <th>Formato/Esempio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>name</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>Ristorante Centro Roma</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>address</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>Via Roma 123</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>city</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>Roma</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>restaurant_code</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>REST_ROMA_001</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>postal_code</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>00100</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>latitude</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>41.902782</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>longitude</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>12.496366</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>phone</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>+39 06 1234567</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>email</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>info@restaurant.com</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>opening_hours</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>{"monday": {"open": "09:00", "close": "22:00"}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note importanti:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><code>restaurant_code</code> deve essere univoco</li>
+                            <li><code>latitude</code> e <code>longitude</code> devono essere entrambi forniti per la mappa</li>
+                            <li><code>opening_hours</code> deve essere in formato JSON valido</li>
+                            <li>Il file deve avere l'intestazione con i nomi delle colonne</li>
+                        </ul>
+                    </div>
+
+                    <form id="restaurantsForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="restaurants_csv" class="form-label">File CSV Ristoranti</label>
+                            <input type="file" class="form-control" id="restaurants_csv" 
+                                   accept=".csv" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Importa Ristoranti
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-info ms-2" onclick="downloadRestaurantsTemplate()">
+                            <i class="bi bi-download me-2"></i>Scarica Template
+                        </button>
+                    </form>
+
+                    <div id="restaurants-result" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Product Listings -->
+        <div class="col-12 col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Importa Listini Prezzi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Formato file CSV richiesto:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Colonna</th>
+                                        <th>Obbligatorio</th>
+                                        <th>Formato/Esempio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>restaurant_code</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>REST_ROMA_001</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>product_name</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>Big Mac</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>local_price</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>8.50</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>delivery_price</code></td>
+                                        <td><span class="badge bg-danger">Sì</span></td>
+                                        <td>10.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>is_available</code></td>
+                                        <td><span class="badge bg-success">No</span></td>
+                                        <td>true/false/sì/no/1/0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Prerequisiti:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>I ristoranti devono essere già stati importati o creati</li>
+                            <li>I prodotti devono essere già stati creati nel sistema</li>
+                            <li><code>restaurant_code</code> deve corrispondere a un ristorante esistente</li>
+                            <li><code>product_name</code> deve corrispondere esattamente al nome di un prodotto esistente</li>
+                        </ul>
+                    </div>
+
+                    <form id="listingsForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="listings_csv" class="form-label">File CSV Listini Prezzi</label>
+                            <input type="file" class="form-control" id="listings_csv" 
+                                   accept=".csv" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-2"></i>Importa Listini
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-info ms-2" onclick="downloadListingsTemplate()">
+                            <i class="bi bi-download me-2"></i>Scarica Template
+                        </button>
+                    </form>
+
+                    <div id="listings-result" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-book me-2"></i>Guida all'Importazione CSV
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-1-circle text-primary me-2"></i>Preparazione File CSV</h6>
+                            <ul>
+                                <li><strong>Encoding:</strong> UTF-8</li>
+                                <li><strong>Separatore:</strong> Virgola (,)</li>
+                                <li><strong>Prima riga:</strong> Intestazioni colonne</li>
+                                <li><strong>Formati numeri:</strong> Punto (.) per decimali</li>
+                                <li><strong>Testo:</strong> No virgolette se non necessarie</li>
+                            </ul>
+
+                            <h6><i class="bi bi-2-circle text-primary me-2"></i>Ordine di Importazione</h6>
+                            <ol>
+                                <li>Prima importa i <strong>Ristoranti</strong></li>
+                                <li>Assicurati di avere <strong>Prodotti</strong> creati</li>
+                                <li>Poi importa i <strong>Listini Prezzi</strong></li>
+                            </ol>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-3-circle text-primary me-2"></i>Esempi di Contenuto CSV</h6>
+                            
+                            <div class="mb-3">
+                                <strong>Ristoranti (restaurants.csv):</strong>
+                                <pre class="bg-light p-2 small"><code>name,address,city,restaurant_code,latitude,longitude
+Ristorante Centro,Via Roma 123,Roma,REST_ROMA_001,41.902782,12.496366
+Ristorante Nord,Via Milano 456,Milano,REST_MILANO_001,45.464664,9.188540</code></pre>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong>Listini Prezzi (listings.csv):</strong>
+                                <pre class="bg-light p-2 small"><code>restaurant_code,product_name,local_price,delivery_price,is_available
+REST_ROMA_001,Big Mac,8.50,10.00,true
+REST_ROMA_001,Coca Cola,2.50,3.00,true
+REST_MILANO_001,Big Mac,9.00,11.00,false</code></pre>
+                            </div>
+
+                            <h6><i class="bi bi-4-circle text-primary me-2"></i>Validazione Errori</h6>
+                            <ul>
+                                <li>Il sistema controllerà ogni riga</li>
+                                <li>Gli errori saranno mostrati con numero riga</li>
+                                <li>Le righe valide saranno importate</li>
+                                <li>Le righe con errori saranno ignorate</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle restaurants form
+    document.getElementById('restaurantsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        const fileInput = document.getElementById('restaurants_csv');
+        
+        if (!fileInput.files[0]) {
+            alert('Seleziona un file CSV');
+            return;
+        }
+        
+        formData.append('csv_file', fileInput.files[0]);
+        
+        const resultDiv = document.getElementById('restaurants-result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Importazione in corso...</div>';
+        
+        fetch('{{ url_for("restaurant_mapping.import_restaurants") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = `<div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>${data.message}
+                </div>`;
+                
+                if (data.errors && data.errors.length > 0) {
+                    html += '<div class="alert alert-warning"><strong>Avvertimenti:</strong><ul>';
+                    data.errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+                // Reset form
+                document.getElementById('restaurantsForm').reset();
+                
+                // Reload page after 2 seconds if successful
+                if (data.imported_count > 0) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>${data.error}
+                </div>`;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `<div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>Errore di connessione: ${error.message}
+            </div>`;
+        });
+    });
+    
+    // Handle listings form
+    document.getElementById('listingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        const fileInput = document.getElementById('listings_csv');
+        
+        if (!fileInput.files[0]) {
+            alert('Seleziona un file CSV');
+            return;
+        }
+        
+        formData.append('csv_file', fileInput.files[0]);
+        
+        const resultDiv = document.getElementById('listings-result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Importazione in corso...</div>';
+        
+        fetch('{{ url_for("restaurant_mapping.import_product_listings") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = `<div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>${data.message}
+                </div>`;
+                
+                if (data.errors && data.errors.length > 0) {
+                    html += '<div class="alert alert-warning"><strong>Avvertimenti:</strong><ul>';
+                    data.errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+                // Reset form
+                document.getElementById('listingsForm').reset();
+                
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>${data.error}
+                </div>`;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `<div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>Errore di connessione: ${error.message}
+            </div>`;
+        });
+    });
+});
+
+function downloadRestaurantsTemplate() {
+    const csvContent = `name,address,city,restaurant_code,postal_code,latitude,longitude,phone,email,opening_hours
+Ristorante Centro Roma,Via Roma 123,Roma,REST_ROMA_001,00100,41.902782,12.496366,+39 06 1234567,info@centro.com,"{\\"monday\\": {\\"open\\": \\"09:00\\", \\"close\\": \\"22:00\\"}}"
+Ristorante Nord Milano,Via Milano 456,Milano,REST_MILANO_001,20100,45.464664,9.188540,+39 02 7654321,info@nord.com,"{\\"tuesday\\": {\\"open\\": \\"10:00\\", \\"close\\": \\"23:00\\"}}"`;
+    
+    downloadCSV(csvContent, 'restaurants_template.csv');
+}
+
+function downloadListingsTemplate() {
+    const csvContent = `restaurant_code,product_name,local_price,delivery_price,is_available
+REST_ROMA_001,Big Mac,8.50,10.00,true
+REST_ROMA_001,Coca Cola,2.50,3.00,true
+REST_MILANO_001,Big Mac,9.00,11.00,false`;
+    
+    downloadCSV(csvContent, 'product_listings_template.csv');
+}
+
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

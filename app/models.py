@@ -3,6 +3,8 @@ from flask_login import UserMixin
 from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -168,3 +170,135 @@ class UserSession(db.Model):
     
     def __repr__(self):
         return f'<UserSession {self.user_id}-{self.session_token[:8]}>'
+
+class Restaurant(db.Model):
+    __tablename__ = 'restaurants'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    address = db.Column(db.Text, nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    postal_code = db.Column(db.String(20))
+    latitude = db.Column(db.Numeric(10, 8))  # GPS coordinates precision
+    longitude = db.Column(db.Numeric(11, 8))  # GPS coordinates precision
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(255))
+    opening_hours = db.Column(JSONB)  # Store as JSON for flexibility
+    restaurant_code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    product_listings = db.relationship('ProductListing', backref='restaurant', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def get_coordinates(self):
+        """Get coordinates as tuple for mapping"""
+        if self.latitude and self.longitude:
+            return (float(self.latitude), float(self.longitude))
+        return None
+    
+    def is_open_now(self):
+        """Check if restaurant is currently open (basic implementation)"""
+        if not self.opening_hours:
+            return True  # Assume open if no hours specified
+        
+        from datetime import datetime
+        now = datetime.now()
+        weekday = now.strftime('%A').lower()
+        
+        if weekday in self.opening_hours:
+            day_hours = self.opening_hours[weekday]
+            if isinstance(day_hours, dict) and 'open' in day_hours and 'close' in day_hours:
+                current_time = now.strftime('%H:%M')
+                return day_hours['open'] <= current_time <= day_hours['close']
+        
+        return False
+    
+    def __repr__(self):
+        return f'<Restaurant {self.name}>'
+
+class ProductListing(db.Model):
+    __tablename__ = 'product_listings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    local_price = db.Column(db.Numeric(15, 7), nullable=False)  # Same precision as products
+    delivery_price = db.Column(db.Numeric(15, 7), nullable=False)
+    is_available = db.Column(db.Boolean, default=True, nullable=False)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    product = db.relationship('Product', backref='listings')
+    
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint('restaurant_id', 'product_id', name='unique_restaurant_product'),
+        db.Index('idx_product_listings_restaurant', 'restaurant_id'),
+        db.Index('idx_product_listings_product', 'product_id'),
+        db.Index('idx_product_listings_available', 'is_available')
+    )
+    
+    def get_delivery_markup(self):
+        """Calculate delivery markup amount"""
+        return float(self.delivery_price - self.local_price)
+    
+    def get_delivery_markup_percent(self):
+        """Calculate delivery markup percentage"""
+        if self.local_price > 0:
+            return (self.get_delivery_markup() / float(self.local_price)) * 100
+        return 0
+    
+    def get_total_food_paper_cost(self):
+        """Calculate total F&P cost including product + extras"""
+        from decimal import Decimal
+        
+        # Base F&P cost from product
+        base_cost = self.product.food_paper_cost_total or Decimal('0')
+        
+        # Add extras costs for menu items
+        extras_cost = Decimal('0')
+        if self.product.product_type == 'menu':
+            # Add fries cost if present
+            if self.product.fries_size:
+                fries_costs = {
+                    'small': Decimal('1.20'),    # Example F&P cost for small fries
+                    'medium': Decimal('1.50'),   # Example F&P cost for medium fries  
+                    'large': Decimal('1.80')     # Example F&P cost for large fries
+                }
+                extras_cost += fries_costs.get(self.product.fries_size, Decimal('0'))
+            
+            # Add drink cost if present
+            if self.product.drink_size:
+                drink_costs = {
+                    'small': Decimal('0.35'),    # Example F&P cost for small drink
+                    'medium': Decimal('0.45'),   # Example F&P cost for medium drink
+                    'large': Decimal('0.55')     # Example F&P cost for large drink
+                }
+                extras_cost += drink_costs.get(self.product.drink_size, Decimal('0'))
+        
+        return base_cost + extras_cost
+    
+    def get_gross_profit_local(self):
+        """Calculate gross profit for local price"""
+        return float(self.local_price - self.get_total_food_paper_cost())
+    
+    def get_gross_profit_delivery(self):
+        """Calculate gross profit for delivery price"""
+        return float(self.delivery_price - self.get_total_food_paper_cost())
+    
+    def get_gross_profit_margin_local(self):
+        """Calculate gross profit margin percentage for local price"""
+        if self.local_price > 0:
+            return (self.get_gross_profit_local() / float(self.local_price)) * 100
+        return 0
+    
+    def get_gross_profit_margin_delivery(self):
+        """Calculate gross profit margin percentage for delivery price"""
+        if self.delivery_price > 0:
+            return (self.get_gross_profit_delivery() / float(self.delivery_price)) * 100
+        return 0
+    
+    def __repr__(self):
+        return f'<ProductListing {self.restaurant.name}-{self.product.name}>'
