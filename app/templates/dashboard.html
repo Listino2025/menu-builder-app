@@ -31,8 +31,8 @@
                     <div class="kpi-icon bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3">
                         <i class="bi bi-egg-fried"></i>
                     </div>
-                    <h3 class="h4 mb-1">{{ kpis.sandwich_count }}</h3>
-                    <p class="text-muted mb-0">Panini Creati</p>
+                    <h3 class="h4 mb-1">{{ kpis.product_count }}</h3>
+                    <p class="text-muted mb-0">Prodotti Creati</p>
                 </div>
             </div>
         </div>
@@ -61,17 +61,6 @@
             </div>
         </div>
         
-        <div class="col-12 col-sm-6 col-lg-3 mb-3">
-            <div class="card kpi-card h-100">
-                <div class="card-body text-center">
-                    <div class="kpi-icon bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-3">
-                        <i class="bi bi-calculator"></i>
-                    </div>
-                    <h3 class="h4 mb-1">€{{ kpis.avg_cost }}</h3>
-                    <p class="text-muted mb-0">Costo Medio</p>
-                </div>
-            </div>
-        </div>
     </div>
     
     
@@ -96,7 +85,6 @@
                                     <th>Product</th>
                                     <th>Type</th>
                                     <th>Cost</th>
-                                    <th>Profit</th>
                                     <th>Created</th>
                                 </tr>
                             </thead>
@@ -119,16 +107,7 @@
                                             {{ product.product_type.title() }}
                                         </span>
                                     </td>
-                                    <td>€{{ "%.2f"|format(product.total_cost) }}</td>
-                                    <td>
-                                        {% if product.gross_profit %}
-                                        <span class="text-{{ 'success' if product.gross_profit > 0 else 'danger' }}">
-                                            €{{ "%.2f"|format(product.gross_profit) }}
-                                        </span>
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
+                                    <td>€{{ "%.2f"|format(product.food_paper_cost_total or 0) }}</td>
                                     <td>
                                         <small class="text-muted">
                                             {{ product.created_at.strftime('%d/%m/%Y') }}
@@ -160,17 +139,17 @@
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('main.create_sandwich') }}" class="btn btn-primary">
-                            <i class="bi bi-burger me-2"></i>Create Sandwich
+                            <i class="bi bi-burger me-2"></i>Crea Prodotto
                         </a>
                         <a href="{{ url_for('main.create_menu') }}" class="btn btn-success">
-                            <i class="bi bi-collection me-2"></i>Create Menu
+                            <i class="bi bi-collection me-2"></i>Crea Menu
                         </a>
                         {% if current_user.is_manager() %}
                         <a href="{{ url_for('main.create_ingredient') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-plus-circle me-2"></i>Add Ingredient
+                            <i class="bi bi-plus-circle me-2"></i>Aggiungi Ingredienti
                         </a>
                         <a href="{{ url_for('main.import_ingredients') }}" class="btn btn-outline-secondary">
-                            <i class="bi bi-upload me-2"></i>Import CSV
+                            <i class="bi bi-upload me-2"></i>Importa CSV
                         </a>
                         {% endif %}
                     </div>

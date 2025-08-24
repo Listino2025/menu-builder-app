@@ -44,13 +44,7 @@ class Ingredient(db.Model):
     wrin_code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50), nullable=False, index=True)  # FOOD_FROZEN, FOOD_CHILLED, etc.
-    price_per_unit = db.Column(db.Numeric(15, 7), nullable=False)
-    unit_type = db.Column(db.String(20), nullable=False)
-    
-    # Valid unit types constraint
-    __table_args__ = (
-        db.CheckConstraint(unit_type.in_(['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']), name='ingredients_unit_type_check'),
-    )
+    food_paper_cost = db.Column(db.Numeric(15, 2), nullable=False, default=0)  # Manual F&P cost in EUR
     temperature_zone = db.Column(db.String(50), nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -58,12 +52,12 @@ class Ingredient(db.Model):
     
     # Ingredient categories for UI grouping
     CATEGORIES = {
-        'BASE': 'Base (Buns)',
-        'PROTEIN': 'Proteins',
-        'CHEESE': 'Cheeses', 
-        'VEGETABLE': 'Vegetables',
-        'SAUCE': 'Sauces',
-        'OTHER': 'Other'
+        'BASE': 'Base',
+        'PROTEIN': 'Proteine',
+        'CHEESE': 'Formaggi', 
+        'VEGETABLE': 'Verdure',
+        'SAUCE': 'Salse',
+        'OTHER': 'Altro'
     }
     
     # Temperature zones
@@ -83,52 +77,47 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     product_code = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    product_type = db.Column(db.String(20), default='sandwich', nullable=False)  # sandwich, menu
-    selling_price = db.Column(db.Numeric(15, 7), nullable=True)  # Can be null for sandwiches used in menus
-    total_cost = db.Column(db.Numeric(15, 7), nullable=False, default=0)
-    gross_profit = db.Column(db.Numeric(15, 7), nullable=True)
-    gross_profit_percent = db.Column(db.Numeric(8, 4), nullable=True)
-    
-    # New required fields for menu creation
-    restaurant_id = db.Column(db.String(50), nullable=True)  # ID ristorante per prezzi specifici
-    delivery_price_id = db.Column(db.String(50), nullable=True)  # ID Prezzo prodotto Delivery
-    food_paper_cost_total = db.Column(db.Numeric(15, 7), nullable=True)  # Food + Paper Cost Totale
+    product_type = db.Column(db.String(20), default='product', nullable=False)  # product, menu
+    food_paper_cost_total = db.Column(db.Numeric(15, 2), nullable=False, default=0)  # Total F&P Cost in EUR
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     # Menu specific fields
-    sandwich_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)  # For menus
+    base_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)  # For menus
     fries_size = db.Column(db.String(10), nullable=True)  # small, medium, large
-    drink_size = db.Column(db.String(10), nullable=True)  # small, medium, large
+    drink_size = db.Column(db.String(10), nullable=True)  # small, medium, large  
+    fries_fp_cost = db.Column(db.Numeric(15, 2), default=0)  # Manual F&P cost for fries
+    drink_fp_cost = db.Column(db.Numeric(15, 2), default=0)  # Manual F&P cost for drink
     
     # Relationships
     ingredients = db.relationship('ProductIngredient', backref='product', lazy='dynamic', cascade='all, delete-orphan')
-    sandwich = db.relationship('Product', remote_side=[id], backref='menus')
+    base_product = db.relationship('Product', remote_side=[id], backref='menus', foreign_keys=[base_product_id])
     
-    def calculate_costs(self):
-        """Calculate total cost from ingredients"""
+    # Table constraints
+    __table_args__ = (
+        db.CheckConstraint(product_type.in_(['product', 'menu']), name='products_type_check'),
+    )
+    
+    def calculate_fp_cost(self):
+        """Calculate total F&P cost including base product + menu extras"""
         from decimal import Decimal
-        total = Decimal('0')
-        for pi in self.ingredients:
-            # Convert quantity to Decimal if it's not already
-            quantity = Decimal(str(pi.quantity)) if pi.quantity else Decimal('0')
-            price = Decimal(str(pi.ingredient.price_per_unit)) if pi.ingredient.price_per_unit else Decimal('0')
-            total += quantity * price
-            
-        self.total_cost = total
         
-        if self.selling_price:
-            selling_price = Decimal(str(self.selling_price))
-            self.gross_profit = selling_price - total
-            self.gross_profit_percent = (self.gross_profit / selling_price * 100) if selling_price > 0 else Decimal('0')
+        # Start with base F&P cost
+        total = Decimal(str(self.food_paper_cost_total)) if self.food_paper_cost_total else Decimal('0')
         
+        # For menu items, add extras costs
+        if self.product_type == 'menu':
+            if self.fries_size and self.fries_fp_cost:
+                total += Decimal(str(self.fries_fp_cost))
+            if self.drink_size and self.drink_fp_cost:
+                total += Decimal(str(self.drink_fp_cost))
+                
         return total
     
     def get_ingredients_list(self):
-        """Get formatted list of ingredients with quantities"""
-        return [f"{pi.ingredient.name} ({pi.quantity}{pi.ingredient.unit_type})" 
-                for pi in self.ingredients.order_by(ProductIngredient.id)]
+        """Get formatted list of ingredients"""
+        return [pi.ingredient.name for pi in self.ingredients.order_by(ProductIngredient.id)]
     
     def __repr__(self):
         return f'<Product {self.name}>'
@@ -139,7 +128,6 @@ class ProductIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
-    quantity = db.Column(db.Numeric(15, 7), nullable=False, default=1)
     
     # Relationships
     ingredient = db.relationship('Ingredient', backref='product_uses')
@@ -251,34 +239,8 @@ class ProductListing(db.Model):
         return 0
     
     def get_total_food_paper_cost(self):
-        """Calculate total F&P cost including product + extras"""
-        from decimal import Decimal
-        
-        # Base F&P cost from product
-        base_cost = self.product.food_paper_cost_total or Decimal('0')
-        
-        # Add extras costs for menu items
-        extras_cost = Decimal('0')
-        if self.product.product_type == 'menu':
-            # Add fries cost if present
-            if self.product.fries_size:
-                fries_costs = {
-                    'small': Decimal('1.20'),    # Example F&P cost for small fries
-                    'medium': Decimal('1.50'),   # Example F&P cost for medium fries  
-                    'large': Decimal('1.80')     # Example F&P cost for large fries
-                }
-                extras_cost += fries_costs.get(self.product.fries_size, Decimal('0'))
-            
-            # Add drink cost if present
-            if self.product.drink_size:
-                drink_costs = {
-                    'small': Decimal('0.35'),    # Example F&P cost for small drink
-                    'medium': Decimal('0.45'),   # Example F&P cost for medium drink
-                    'large': Decimal('0.55')     # Example F&P cost for large drink
-                }
-                extras_cost += drink_costs.get(self.product.drink_size, Decimal('0'))
-        
-        return base_cost + extras_cost
+        """Calculate total F&P cost using product's method"""
+        return self.product.calculate_fp_cost()
     
     def get_gross_profit_local(self):
         """Calculate gross profit for local price"""

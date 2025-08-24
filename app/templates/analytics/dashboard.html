@@ -146,16 +146,10 @@
                                         <td>
                                             <span class="badge bg-secondary">{{ product.product_type }}</span>
                                         </td>
-                                        <td>€{{ "%.3f"|format(product.total_cost or 0) }}</td>
-                                        <td>€{{ "%.2f"|format(product.selling_price or 0) }}</td>
+                                        <td>€{{ "%.3f"|format(product.food_paper_cost_total or 0) }}</td>
+                                        <td><span class="text-muted">In listings</span></td>
                                         <td>
-                                            {% if product.gross_profit_percent %}
-                                                <span class="badge {{ 'bg-success' if product.gross_profit_percent > 0 else 'bg-danger' }}">
-                                                    {{ "%.1f"|format(product.gross_profit_percent) }}%
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
+                                            <span class="text-muted">In listings</span>
                                         </td>
                                         <td>{{ product.created_at.strftime('%d/%m/%Y') if product.created_at else '-' }}</td>
                                         <td>

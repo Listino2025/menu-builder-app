@@ -59,11 +59,11 @@ def user_detail(id):
     total_products = Product.query.filter_by(created_by=user.id, is_active=True).count()
     total_ingredients = Ingredient.query.filter_by(created_by=user.id, is_active=True).count()
     
-    # Calculate total profit from user's products
-    total_profit = db.session.query(db.func.sum(Product.gross_profit)).filter(
+    # Calculate total F&P cost from user's products
+    total_fp_cost = db.session.query(db.func.sum(Product.food_paper_cost_total)).filter(
         Product.created_by == user.id,
-        Product.gross_profit.isnot(None),
-        Product.is_active == True
+        Product.is_active == True,
+        Product.food_paper_cost_total.isnot(None)
     ).scalar() or 0
     
     user_data = {
@@ -73,7 +73,7 @@ def user_detail(id):
         'stats': {
             'total_products': total_products,
             'total_ingredients': total_ingredients,
-            'total_profit': round(total_profit, 2)
+            'total_fp_cost': round(total_fp_cost, 2)
         }
     }
     

@@ -27,8 +27,7 @@ def get_ingredients():
         'id': ing.id,
         'name': ing.name,
         'category': ing.category,
-        'price_per_unit': float(ing.price_per_unit),
-        'unit_type': ing.unit_type,
+        'food_paper_cost': float(ing.food_paper_cost) if ing.food_paper_cost else 0,
         'wrin_code': ing.wrin_code
     } for ing in ingredients])
 
@@ -49,14 +48,9 @@ def calculate_product_cost(product_id):
     if product.created_by != current_user.id and not current_user.is_manager():
         return jsonify({'error': 'Unauthorized'}), 403
     
-    total_cost = product.calculate_costs()
-    db.session.commit()
-    
     return jsonify({
         'product_id': product.id,
-        'total_cost': float(total_cost),
-        'gross_profit': float(product.gross_profit) if product.gross_profit else None,
-        'gross_profit_percent': float(product.gross_profit_percent) if product.gross_profit_percent else None
+        'food_paper_cost': float(product.food_paper_cost_total)
     })
 
 @bp.route('/products', methods=['POST'])
@@ -78,8 +72,8 @@ def create_product():
         product = Product(
             name=data['name'],
             product_code=data.get('product_code', f"PROD_{current_user.id}_{db.session.query(Product).count() + 1}"),
-            product_type=data.get('product_type', 'sandwich'),
-            selling_price=data.get('selling_price'),
+            product_type=data.get('product_type', 'product'),
+            food_paper_cost_total=data.get('food_paper_cost_total', 0),
             created_by=current_user.id
         )
         
@@ -102,17 +96,13 @@ def create_product():
             )
             db.session.add(product_ingredient)
         
-        # Calculate costs
-        product.calculate_costs()
         db.session.commit()
         
         return jsonify({
             'id': product.id,
             'name': product.name,
             'product_code': product.product_code,
-            'total_cost': float(product.total_cost),
-            'gross_profit': float(product.gross_profit) if product.gross_profit else None,
-            'message': 'Product created successfully'
+            'food_paper_cost': float(product.food_paper_cost_total)
         }), 201
         
     except Exception as e:
@@ -137,8 +127,6 @@ def update_product(product_id):
         # Update basic fields
         if 'name' in data:
             product.name = data['name']
-        if 'selling_price' in data:
-            product.selling_price = data['selling_price']
         
         # Update ingredients if provided
         if 'ingredients' in data:
@@ -161,16 +149,12 @@ def update_product(product_id):
                 )
                 db.session.add(product_ingredient)
         
-        # Recalculate costs
-        product.calculate_costs()
         db.session.commit()
         
         return jsonify({
             'id': product.id,
             'name': product.name,
-            'total_cost': float(product.total_cost),
-            'gross_profit': float(product.gross_profit) if product.gross_profit else None,
-            'message': 'Product updated successfully'
+            'food_paper_cost': float(product.food_paper_cost_total)
         })
         
     except Exception as e:

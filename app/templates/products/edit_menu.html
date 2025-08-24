@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Menu - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.products') }}">Prodotti</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.product_detail', id=product.id) }}">{{ product.name }}</a></li>
+                    <li class="breadcrumb-item active">Modifica</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">
+                <i class="bi bi-collection me-2 text-primary"></i>
+                Modifica Menu: {{ product.name }}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Dettagli Menu
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nome Menu *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ product.name }}" required maxlength="100">
+                            <div class="invalid-feedback">
+                                Inserisci un nome per il menu.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="base_product_id" class="form-label">Prodotto Base *</label>
+                            <select class="form-select" id="base_product_id" name="base_product_id" required>
+                                <option value="">Seleziona prodotto base...</option>
+                                {% for base_product in products %}
+                                <option value="{{ base_product.id }}" 
+                                        {{ 'selected' if product.base_product_id == base_product.id else '' }}>
+                                    {{ base_product.name }} (€{{ "%.3f"|format(base_product.food_paper_cost_total) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Seleziona il prodotto che sarà la base di questo menu</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fries_size" class="form-label">Patatine</label>
+                                    <select class="form-select" id="fries_size" name="fries_size">
+                                        <option value="">Nessuna</option>
+                                        <option value="small" {{ 'selected' if product.fries_size == 'small' else '' }}>Small</option>
+                                        <option value="medium" {{ 'selected' if product.fries_size == 'medium' else '' }}>Medium</option>
+                                        <option value="large" {{ 'selected' if product.fries_size == 'large' else '' }}>Large</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="drink_size" class="form-label">Bibita</label>
+                                    <select class="form-select" id="drink_size" name="drink_size">
+                                        <option value="">Nessuna</option>
+                                        <option value="small" {{ 'selected' if product.drink_size == 'small' else '' }}>Small</option>
+                                        <option value="medium" {{ 'selected' if product.drink_size == 'medium' else '' }}>Medium</option>
+                                        <option value="large" {{ 'selected' if product.drink_size == 'large' else '' }}>Large</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fries_fp_cost" class="form-label">Costo F&P Patatine (€)</label>
+                                    <input type="number" class="form-control" id="fries_fp_cost" name="fries_fp_cost" 
+                                           value="{{ product.fries_fp_cost or '' }}" step="0.001" min="0">
+                                    <div class="form-text">Costo Food & Paper per le patatine</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="drink_fp_cost" class="form-label">Costo F&P Bibita (€)</label>
+                                    <input type="number" class="form-control" id="drink_fp_cost" name="drink_fp_cost" 
+                                           value="{{ product.drink_fp_cost or '' }}" step="0.001" min="0">
+                                    <div class="form-text">Costo Food & Paper per la bibita</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="food_paper_cost_total" class="form-label">Costo F&P Totale (€) *</label>
+                            <input type="number" class="form-control" id="food_paper_cost_total" name="food_paper_cost_total" 
+                                   value="{{ product.food_paper_cost_total or '' }}" step="0.001" min="0" required>
+                            <div class="form-text">Costo totale Food & Paper per questo menu (aggiornato automaticamente)</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i>Salva Modifiche
+                            </button>
+                            <a href="{{ url_for('main.product_detail', id=product.id) }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-calculate total F&P cost
+document.addEventListener('DOMContentLoaded', function() {
+    const baseProductSelect = document.getElementById('base_product_id');
+    const friesCostInput = document.getElementById('fries_fp_cost');
+    const drinkCostInput = document.getElementById('drink_fp_cost');
+    const totalCostInput = document.getElementById('food_paper_cost_total');
+
+    function updateTotalCost() {
+        let total = 0;
+        
+        // Base product cost
+        const selectedOption = baseProductSelect.selectedOptions[0];
+        if (selectedOption && selectedOption.value) {
+            const baseCostMatch = selectedOption.textContent.match(/€([0-9.]+)/);
+            if (baseCostMatch) {
+                total += parseFloat(baseCostMatch[1]);
+            }
+        }
+        
+        // Fries cost
+        const friesCost = parseFloat(friesCostInput.value) || 0;
+        total += friesCost;
+        
+        // Drink cost
+        const drinkCost = parseFloat(drinkCostInput.value) || 0;
+        total += drinkCost;
+        
+        totalCostInput.value = total.toFixed(3);
+    }
+
+    baseProductSelect.addEventListener('change', updateTotalCost);
+    friesCostInput.addEventListener('input', updateTotalCost);
+    drinkCostInput.addEventListener('input', updateTotalCost);
+});
+</script>
+{% endblock %}

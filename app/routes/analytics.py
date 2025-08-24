@@ -22,31 +22,31 @@ def analytics():
     
     total_ingredients = Ingredient.query.filter_by(is_active=True).count()
     
-    # Average profit calculation
+    # Average F&P cost calculation
     if current_user.is_manager():
-        avg_profit = db.session.query(func.avg(Product.gross_profit)).filter(
-            Product.gross_profit.isnot(None),
-            Product.is_active == True
+        avg_fp_cost = db.session.query(func.avg(Product.food_paper_cost_total)).filter(
+            Product.is_active == True,
+            Product.food_paper_cost_total.isnot(None)
         ).scalar() or 0
     else:
-        avg_profit = db.session.query(func.avg(Product.gross_profit)).filter(
-            Product.gross_profit.isnot(None),
+        avg_fp_cost = db.session.query(func.avg(Product.food_paper_cost_total)).filter(
             Product.is_active == True,
-            Product.created_by == current_user.id
+            Product.created_by == current_user.id,
+            Product.food_paper_cost_total.isnot(None)
         ).scalar() or 0
     
-    # Most profitable products
+    # Most expensive products by F&P cost
     if current_user.is_manager():
         top_products = Product.query.filter(
-            Product.gross_profit.isnot(None),
-            Product.is_active == True
-        ).order_by(Product.gross_profit.desc()).limit(5).all()
+            Product.is_active == True,
+            Product.food_paper_cost_total.isnot(None)
+        ).order_by(Product.food_paper_cost_total.desc()).limit(10).all()
     else:
         top_products = Product.query.filter(
-            Product.gross_profit.isnot(None),
             Product.is_active == True,
-            Product.created_by == current_user.id
-        ).order_by(Product.gross_profit.desc()).limit(5).all()
+            Product.created_by == current_user.id,
+            Product.food_paper_cost_total.isnot(None)
+        ).order_by(Product.food_paper_cost_total.desc()).limit(10).all()
     
     # Category distribution
     category_data = db.session.query(
@@ -81,7 +81,7 @@ def analytics():
         'total_products': total_products,
         'total_ingredients': total_ingredients,
         'total_users': total_users,
-        'avg_profit': round(avg_profit, 2) if avg_profit else 0,
+        'avg_fp_cost': round(avg_fp_cost, 2) if avg_fp_cost else 0,
         'top_products': top_products,
         'category_data': category_data,
         'recent_activity': recent_activity
@@ -89,39 +89,39 @@ def analytics():
     
     return render_template('analytics/dashboard.html', data=analytics_data)
 
-@bp.route('/analytics/profit-trend')
+@bp.route('/analytics/fp-cost-trend')
 @login_required
-def profit_trend_data():
-    """API endpoint for profit trend chart data"""
+def fp_cost_trend_data():
+    """API endpoint for F&P cost trend chart data"""
     days = request.args.get('days', 30, type=int)
     
-    # For now, return sample data
-    # In a real implementation, you would calculate daily/weekly profit trends
+    # Calculate weekly F&P cost trends
     labels = []
     data = []
     
     for i in range(days // 7):  # Weekly data
         week_start = datetime.utcnow() - timedelta(weeks=i+1)
+        week_end = week_start + timedelta(weeks=1)
         labels.insert(0, week_start.strftime('%d/%m'))
         
-        # Sample calculation - replace with real profit calculation
+        # Calculate average F&P cost for products created in this week
         if current_user.is_manager():
-            week_profit = db.session.query(func.avg(Product.gross_profit)).filter(
+            week_avg_fp_cost = db.session.query(func.avg(Product.food_paper_cost_total)).filter(
                 Product.created_at >= week_start,
-                Product.created_at < week_start + timedelta(weeks=1),
-                Product.gross_profit.isnot(None),
-                Product.is_active == True
+                Product.created_at < week_end,
+                Product.is_active == True,
+                Product.food_paper_cost_total.isnot(None)
             ).scalar() or 0
         else:
-            week_profit = db.session.query(func.avg(Product.gross_profit)).filter(
+            week_avg_fp_cost = db.session.query(func.avg(Product.food_paper_cost_total)).filter(
                 Product.created_at >= week_start,
-                Product.created_at < week_start + timedelta(weeks=1),
-                Product.gross_profit.isnot(None),
+                Product.created_at < week_end,
                 Product.is_active == True,
-                Product.created_by == current_user.id
+                Product.created_by == current_user.id,
+                Product.food_paper_cost_total.isnot(None)
             ).scalar() or 0
         
-        data.insert(0, round(week_profit, 2))
+        data.insert(0, round(week_avg_fp_cost, 2))
     
     return jsonify({
         'labels': labels,
@@ -133,10 +133,10 @@ def profit_trend_data():
 def category_costs_data():
     """API endpoint for category cost distribution"""
     
-    # Calculate average cost per category
+    # Calculate average F&P cost per category
     category_costs = db.session.query(
         Ingredient.category,
-        func.avg(Ingredient.price_per_unit).label('avg_cost'),
+        func.avg(Ingredient.food_paper_cost).label('avg_fp_cost'),
         func.count(ProductIngredient.id).label('usage_count')
     ).join(ProductIngredient).join(Product)
     
@@ -145,11 +145,12 @@ def category_costs_data():
     
     category_costs = category_costs.filter(
         Product.is_active == True,
-        Ingredient.is_active == True
+        Ingredient.is_active == True,
+        Ingredient.food_paper_cost.isnot(None)
     ).group_by(Ingredient.category).all()
     
     return jsonify({
         'labels': [cat.category.replace('_', ' ').title() for cat in category_costs],
-        'costs': [round(float(cat.avg_cost), 3) for cat in category_costs],
+        'costs': [round(float(cat.avg_fp_cost), 3) if cat.avg_fp_cost else 0 for cat in category_costs],
         'usage': [cat.usage_count for cat in category_costs]
     })

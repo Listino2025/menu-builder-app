@@ -80,11 +80,11 @@
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="price_per_unit" class="form-label">Prezzo per Unità *</label>
+                                <label for="food_paper_cost" class="form-label">Costo Food & Paper *</label>
                                 <div class="input-group">
                                     <span class="input-group-text">€</span>
-                                    <input type="number" class="form-control" id="price_per_unit" name="price_per_unit" 
-                                           step="0.0000001" min="0" max="999.9999999" placeholder="0.0000000" required>
+                                    <input type="number" class="form-control" id="food_paper_cost" name="food_paper_cost" 
+                                           step="0.01" min="0" max="999.99" placeholder="0.00" required>
                                 </div>
                                 <div class="invalid-feedback">
                                     Inserisci un prezzo valido (fino a 7 decimali).
@@ -93,45 +93,14 @@
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="unit_type" class="form-label">Tipo Unità *</label>
-                                <select class="form-select" id="unit_type" name="unit_type" required>
-                                    <option value="">Seleziona unità...</option>
-                                    <optgroup label="Peso">
-                                        <option value="kg">Chilogrammi (kg)</option>
-                                        <option value="hg">Ettogrammi (hg)</option>
-                                        <option value="dag">Decagrammi (dag)</option>
-                                        <option value="g">Grammi (g)</option>
-                                        <option value="dg">Decigrammi (dg)</option>
-                                    </optgroup>
-                                    <optgroup label="Volume">
-                                        <option value="l">Litri (l)</option>
-                                        <option value="dl">Decilitri (dl)</option>
-                                        <option value="cl">Centilitri (cl)</option>
-                                        <option value="ml">Millilitri (ml)</option>
-                                    </optgroup>
-                                    <optgroup label="Conteggio">
-                                        <option value="pieces">Pezzi</option>
-                                        <option value="slices">Fette</option>
-                                        <option value="portions">Porzioni</option>
-                                    </optgroup>
-                                </select>
-                                <div class="invalid-feedback">
-                                    Seleziona il tipo di unità.
+                                <div class="alert alert-light">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Il costo F&P rappresenta il costo totale dell'ingrediente considerando food e packaging.
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="alert alert-info">
-                            <h6 class="alert-heading">
-                                <i class="bi bi-lightbulb me-1"></i>Suggerimenti
-                            </h6>
-                            <ul class="mb-0 small">
-                                <li>Usa nomi descrittivi per gli ingredienti</li>
-                                <li>Il prezzo deve essere espresso per singola unità</li>
-                                <li>Le categorie aiutano nell'organizzazione del menu</li>
-                                <li>La zona temperatura è utile per la gestione del magazzino</li>
-                            </ul>
-                        </div>
+                        
                         
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
@@ -206,17 +175,9 @@ document.getElementById('wrin_code').addEventListener('blur', function(e) {
 
 // Validate form data before submission
 function validateFormData() {
-    const unitType = document.getElementById('unit_type').value;
-    const validUnits = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions'];
-    
-    if (!validUnits.includes(unitType)) {
-        alert('Tipo di unità non valido. Seleziona una delle opzioni disponibili.');
-        return false;
-    }
-    
-    const price = parseFloat(document.getElementById('price_per_unit').value);
-    if (isNaN(price) || price < 0 || price > 999.9999999) {
-        alert('Il prezzo deve essere un numero valido tra 0 e 999.9999999');
+    const price = parseFloat(document.getElementById('food_paper_cost').value);
+    if (isNaN(price) || price < 0 || price > 999.99) {
+        alert('Il costo F&P deve essere un numero valido tra 0 e 999.99');
         return false;
     }
     
@@ -224,7 +185,7 @@ function validateFormData() {
 }
 
 // Price formatting with 7 decimal precision
-document.getElementById('price_per_unit').addEventListener('input', function(e) {
+document.getElementById('food_paper_cost').addEventListener('input', function(e) {
     let value = parseFloat(e.target.value);
     if (!isNaN(value)) {
         // Limit to 7 decimal places
@@ -251,14 +212,8 @@ document.getElementById('category').addEventListener('change', function(e) {
     }
 });
 
-document.getElementById('unit_type').addEventListener('change', function(e) {
-    if (e.target.value !== '') {
-        e.target.classList.remove('is-invalid');
-        e.target.classList.add('is-valid');
-    }
-});
 
-document.getElementById('price_per_unit').addEventListener('input', function(e) {
+document.getElementById('food_paper_cost').addEventListener('input', function(e) {
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value >= 0 && value <= 999.9999999) {
         e.target.classList.remove('is-invalid');
@@ -268,10 +223,9 @@ document.getElementById('price_per_unit').addEventListener('input', function(e) 
 
 function updatePreview() {
     const name = document.getElementById('name').value;
-    const price = document.getElementById('price_per_unit').value;
-    const unit = document.getElementById('unit_type').value;
+    const price = document.getElementById('food_paper_cost').value;
     
-    if (name && price && unit) {
+    if (name && price) {
         // Preview updated
     }
 }

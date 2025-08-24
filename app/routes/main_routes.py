@@ -19,14 +19,14 @@ def dashboard():
     """Main dashboard with KPIs and overview"""
     
     # Calculate KPIs
-    sandwich_count = Product.query.filter_by(is_active=True, product_type='sandwich').count()
+    product_count = Product.query.filter_by(is_active=True, product_type='product').count()
     menu_count = Product.query.filter_by(is_active=True, product_type='menu').count()
     total_ingredients = Ingredient.query.filter_by(is_active=True).count()
     total_users = User.query.filter_by(is_active=True).count()
     
-    # Average cost calculation
-    avg_cost = db.session.query(func.avg(Product.total_cost)).filter(
-        Product.total_cost.isnot(None),
+    # Average F&P cost calculation
+    avg_fp_cost = db.session.query(func.avg(Product.food_paper_cost_total)).filter(
+        Product.food_paper_cost_total.isnot(None),
         Product.is_active == True
     ).scalar() or 0
     
@@ -36,14 +36,13 @@ def dashboard():
         Product.created_at >= week_ago,
         Product.is_active == True
     ).order_by(Product.created_at.desc()).limit(5).all()
-    
-    
+
     kpis = {
-        'sandwich_count': sandwich_count,
+        'product_count': product_count,
         'menu_count': menu_count,
         'total_ingredients': total_ingredients,
         'total_users': total_users,
-        'avg_cost': round(avg_cost, 2) if avg_cost else 0
+        'avg_fp_cost': round(avg_fp_cost, 2) if avg_fp_cost else 0
     }
     
     return render_template('dashboard.html', 

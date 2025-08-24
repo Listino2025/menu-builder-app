@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#28A745">
-    <meta name="description" content="Menu Builder - Crea panini e menu personalizzati con analisi dei costi">
+    <meta name="description" content="Menu Builder - Crea prodotti e menu personalizzati con analisi dei costi">
     
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -64,7 +64,7 @@
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{{ url_for('main.create_sandwich') }}">
-                                <i class="bi bi-burger me-2"></i>Panino
+                                <i class="bi bi-box me-2"></i>Prodotto
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('main.create_menu') }}">
                                 <i class="bi bi-collection me-2"></i>Menu
@@ -79,6 +79,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('restaurant_mapping.index') }}">
                             <i class="bi bi-geo-alt me-1"></i>Ristoranti
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('restaurant_mapping.price_comparison') }}">
+                            <i class="bi bi-graph-up me-1"></i>Confronto Prezzi
                         </a>
                     </li>
                     {% if current_user.is_admin() %}
@@ -141,9 +146,9 @@
             </a>
         </div>
         <div class="mobile-nav-item">
-            <a href="{{ url_for('main.analytics') }}" class="mobile-nav-link">
+            <a href="{{ url_for('restaurant_mapping.price_comparison') }}" class="mobile-nav-link">
                 <i class="bi bi-graph-up"></i>
-                <span>Analisi</span>
+                <span>Confronto</span>
             </a>
         </div>
     </div>
@@ -185,8 +190,8 @@
                             <a href="{{ url_for('main.create_sandwich') }}" class="btn btn-primary w-100 d-flex align-items-center justify-content-center py-3">
                                 <i class="bi bi-egg-fried me-2 fs-4"></i>
                                 <div class="text-start">
-                                    <div class="fw-bold">Crea Panino</div>
-                                    <small class="opacity-75">Componi un nuovo panino con i tuoi ingredienti</small>
+                                    <div class="fw-bold">Crea Prodotto</div>
+                                    <small class="opacity-75">Componi un nuovo prodotto con i tuoi ingredienti</small>
                                 </div>
                             </a>
                         </div>
@@ -195,7 +200,7 @@
                                 <i class="bi bi-collection me-2 fs-4"></i>
                                 <div class="text-start">
                                     <div class="fw-bold">Crea Menu</div>
-                                    <small class="opacity-75">Combina panino, patatine e bevande</small>
+                                    <small class="opacity-75">Combina prodotto, patatine e bevande</small>
                                 </div>
                             </a>
                         </div>

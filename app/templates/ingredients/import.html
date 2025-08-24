@@ -130,14 +130,9 @@
                                     <td>Categoria (BASE, PROTEIN, CHEESE, etc.)</td>
                                 </tr>
                                 <tr>
-                                    <td><code>price_per_unit</code></td>
+                                    <td><code>food_paper_cost</code></td>
                                     <td><span class="badge bg-danger">Sì</span></td>
-                                    <td>Prezzo per unità (numero decimale)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>unit_type</code></td>
-                                    <td><span class="badge bg-danger">Sì</span></td>
-                                    <td>Tipo unità (kg, g, pieces, etc.)</td>
+                                    <td>Costo Food & Paper (numero decimale in EUR)</td>
                                 </tr>
                                 <tr>
                                     <td><code>wrin_code</code></td>
@@ -251,12 +246,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function downloadSample() {
-    const csvContent = `wrin_code,name,category,price_per_unit,unit_type,temperature_zone
-BUN001,Panino Regolare,BASE,0.25,pieces,AMBIENT
-BEEF001,Hamburger di Manzo,PROTEIN,2.50,pieces,FROZEN
-CHED001,Formaggio Cheddar,CHEESE,0.30,slices,CHILLED
-LETT001,Lattuga Iceberg,VEGETABLE,0.15,g,CHILLED
-MAYO001,Maionese,SAUCE,0.05,ml,AMBIENT`;
+    const csvContent = `wrin_code,name,category,food_paper_cost,temperature_zone
+BUN001,Panino Regolare,BASE,1.25,AMBIENT
+BEEF001,Hamburger di Manzo,PROTEIN,2.50,FROZEN
+CHED001,Formaggio Cheddar,CHEESE,0.85,CHILLED
+LETT001,Lattuga Iceberg,VEGETABLE,0.30,CHILLED
+MAYO001,Maionese,SAUCE,0.15,AMBIENT`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

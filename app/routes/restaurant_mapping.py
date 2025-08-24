@@ -119,31 +119,37 @@ def restaurant_detail(restaurant_id):
     """View restaurant details and product listings"""
     restaurant = Restaurant.query.get_or_404(restaurant_id)
     
-    # Get product listings for this restaurant
-    listings = (ProductListing.query
-                .filter_by(restaurant_id=restaurant_id)
-                .join(Product)
-                .filter(Product.is_active == True)
-                .order_by(Product.name)
-                .all())
+    # Get ALL active products
+    all_products = (Product.query
+                   .filter(Product.is_active == True)
+                   .order_by(Product.name)
+                   .all())
     
-    # Get products not yet listed at this restaurant
-    listed_product_ids = [l.product_id for l in listings]
-    available_products = (Product.query
-                         .filter(Product.is_active == True)
-                         .filter(~Product.id.in_(listed_product_ids))
-                         .order_by(Product.name)
-                         .all())
+    # Get existing listings for this restaurant (for pricing info)
+    existing_listings = {l.product_id: l for l in 
+                        ProductListing.query.filter_by(restaurant_id=restaurant_id).all()}
+    
+    # Create combined product list with pricing info
+    products_with_pricing = []
+    for product in all_products:
+        listing = existing_listings.get(product.id)
+        products_with_pricing.append({
+            'product': product,
+            'listing': listing,  # None if no pricing set yet
+            'has_pricing': listing is not None,
+            'local_price': listing.local_price if listing else None,
+            'delivery_price': listing.delivery_price if listing else None,
+            'is_available': listing.is_available if listing else True
+        })
     
     return render_template('restaurant_mapping/restaurant_detail.html',
                          restaurant=restaurant,
-                         listings=listings,
-                         available_products=available_products)
+                         products_with_pricing=products_with_pricing)
 
-@bp.route('/listings/create', methods=['POST'])
+@bp.route('/listings/save', methods=['POST'])
 @login_required
-def create_listing():
-    """Create product listing for restaurant"""
+def save_listing():
+    """Create or update product listing for restaurant"""
     if not current_user.is_manager():
         return jsonify({'error': 'Accesso negato'}), 403
     
@@ -153,6 +159,7 @@ def create_listing():
         product_id = data['product_id']
         local_price = Decimal(str(data['local_price']))
         delivery_price = Decimal(str(data['delivery_price']))
+        is_available = data.get('is_available', True)
         
         # Validate restaurant and product exist
         restaurant = Restaurant.query.get_or_404(restaurant_id)
@@ -165,23 +172,31 @@ def create_listing():
         ).first()
         
         if existing:
-            return jsonify({'error': 'Listino già esistente per questo prodotto'}), 400
+            # Update existing listing
+            existing.local_price = local_price
+            existing.delivery_price = delivery_price
+            existing.is_available = is_available
+            listing = existing
+            action = 'updated'
+        else:
+            # Create new listing
+            listing = ProductListing(
+                restaurant_id=restaurant_id,
+                product_id=product_id,
+                local_price=local_price,
+                delivery_price=delivery_price,
+                is_available=is_available
+            )
+            db.session.add(listing)
+            action = 'created'
         
-        # Create listing
-        listing = ProductListing(
-            restaurant_id=restaurant_id,
-            product_id=product_id,
-            local_price=local_price,
-            delivery_price=delivery_price
-        )
-        
-        db.session.add(listing)
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': f'Listino creato per {product.name}',
-            'listing_id': listing.id
+            'message': f'Listino {action} per {product.name}',
+            'listing_id': listing.id,
+            'action': action
         })
         
     except Exception as e:
@@ -192,9 +207,10 @@ def create_listing():
 @login_required
 def price_comparison():
     """Product price comparison across restaurants"""
-    # Get all products with listings
+    # Get all products with listings and their F&P costs
     products_query = text("""
-        SELECT DISTINCT p.id, p.name, p.product_type
+        SELECT DISTINCT p.id, p.name, p.product_type, p.food_paper_cost_total,
+               p.fries_fp_cost, p.drink_fp_cost
         FROM products p
         JOIN product_listings pl ON p.id = pl.product_id
         WHERE p.is_active = true
@@ -206,8 +222,13 @@ def price_comparison():
     # Get comparison data
     comparison_data = []
     for product in products:
+        # Calculate total F&P cost for this product
+        total_fp_cost = float(product.food_paper_cost_total or 0)
+        if product.product_type == 'menu':
+            total_fp_cost += float(product.fries_fp_cost or 0) + float(product.drink_fp_cost or 0)
+        
         listings_query = text("""
-            SELECT r.name as restaurant_name, r.city, 
+            SELECT r.id as restaurant_id, r.name as restaurant_name, r.city, 
                    pl.local_price, pl.delivery_price, pl.is_available
             FROM product_listings pl
             JOIN restaurants r ON pl.restaurant_id = r.id
@@ -215,10 +236,23 @@ def price_comparison():
             ORDER BY pl.local_price ASC
         """)
         
-        listings = db.session.execute(listings_query, {'product_id': product.id}).fetchall()
+        raw_listings = db.session.execute(listings_query, {'product_id': product.id}).fetchall()
+        
+        # Add F&P cost to each listing
+        listings = []
+        for listing in raw_listings:
+            listings.append({
+                'restaurant_id': listing.restaurant_id,
+                'restaurant_name': listing.restaurant_name,
+                'city': listing.city,
+                'local_price': float(listing.local_price),
+                'delivery_price': float(listing.delivery_price),
+                'is_available': listing.is_available,
+                'total_fp_cost': total_fp_cost
+            })
         
         if listings:
-            prices = [float(l.local_price) for l in listings if l.is_available]
+            prices = [l['local_price'] for l in listings if l['is_available']]
             comparison_data.append({
                 'product': product,
                 'listings': listings,
@@ -227,8 +261,12 @@ def price_comparison():
                 'price_range': max(prices) - min(prices) if len(prices) > 1 else 0
             })
     
+    # Get all restaurants for the filter dropdown
+    restaurants = Restaurant.query.filter_by(is_active=True).order_by(Restaurant.name).all()
+    
     return render_template('restaurant_mapping/price_comparison.html',
-                         comparison_data=comparison_data)
+                         comparison_data=comparison_data,
+                         restaurants=restaurants)
 
 @bp.route('/api/restaurants-geojson')
 @login_required

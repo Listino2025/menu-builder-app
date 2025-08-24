@@ -35,10 +35,8 @@ def products():
     # Sorting
     if sort_by == 'name':
         query = query.order_by(Product.name.desc() if order == 'desc' else Product.name.asc())
-    elif sort_by == 'cost':
-        query = query.order_by(Product.total_cost.desc() if order == 'desc' else Product.total_cost.asc())
-    elif sort_by == 'profit':
-        query = query.order_by(Product.gross_profit.desc() if order == 'desc' else Product.gross_profit.asc())
+    elif sort_by == 'fp_cost':
+        query = query.order_by(Product.food_paper_cost_total.desc() if order == 'desc' else Product.food_paper_cost_total.asc())
     else:  # created_at
         query = query.order_by(Product.created_at.desc() if order == 'desc' else Product.created_at.asc())
     
@@ -75,7 +73,7 @@ def create_sandwich():
             product_code = f"SW_{current_user.id}_{product_count + 1}"
             
             # Validate required fields
-            required_fields = ['name', 'product_code_id', 'restaurant_id', 'delivery_price_id', 'selling_price', 'food_paper_cost_total']
+            required_fields = ['name', 'food_paper_cost_total']
             for field in required_fields:
                 if not request.form.get(field) or request.form.get(field).strip() == '':
                     flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
@@ -85,10 +83,7 @@ def create_sandwich():
             product = Product(
                 name=request.form['name'],
                 product_code=request.form.get('product_code_id', product_code),  # Use provided ID or generated one
-                product_type='sandwich',
-                selling_price=float(request.form['selling_price']),
-                restaurant_id=request.form['restaurant_id'],
-                delivery_price_id=request.form['delivery_price_id'],
+                product_type='product',
                 food_paper_cost_total=float(request.form['food_paper_cost_total']),
                 created_by=current_user.id
             )
@@ -98,37 +93,29 @@ def create_sandwich():
             
             # Add ingredients from form
             ingredient_ids = request.form.getlist('ingredient_ids[]')
-            quantities = request.form.getlist('quantities[]')
             
             if not ingredient_ids:
                 flash('Please select at least one ingredient.', 'error')
                 return redirect(request.url)
             
-            for i, ingredient_id in enumerate(ingredient_ids):
+            for ingredient_id in ingredient_ids:
                 if ingredient_id:  # Skip empty values
-                    from decimal import Decimal
-                    quantity_str = quantities[i] if i < len(quantities) and quantities[i] else '1.0'
-                    quantity = Decimal(str(quantity_str))
-                    
                     product_ingredient = ProductIngredient(
                         product_id=product.id,
-                        ingredient_id=int(ingredient_id),
-                        quantity=quantity
+                        ingredient_id=int(ingredient_id)
                     )
                     db.session.add(product_ingredient)
             
-            # Calculate costs
-            product.calculate_costs()
             db.session.commit()
             
-            flash(f'Sandwich "{product.name}" created successfully!', 'success')
+            flash(f'Product "{product.name}" created successfully!', 'success')
             return redirect(url_for('main.product_detail', id=product.id))
             
         except ValueError as e:
             flash('Invalid number format. Please check your inputs.', 'error')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error creating sandwich: {str(e)}', 'error')
+            flash(f'Error creating product: {str(e)}', 'error')
     
     # Get ingredients for the composer
     ingredients = Ingredient.query.filter_by(is_active=True).order_by(Ingredient.category, Ingredient.name).all()
@@ -154,7 +141,7 @@ def create_menu():
             product_code = f"MN_{current_user.id}_{product_count + 1}"
             
             # Validate required fields for menu
-            menu_required_fields = ['name', 'product_code_id', 'restaurant_id', 'delivery_price_id', 'selling_price', 'food_paper_cost_total']
+            menu_required_fields = ['name']
             for field in menu_required_fields:
                 if not request.form.get(field) or request.form.get(field).strip() == '':
                     flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
@@ -162,51 +149,23 @@ def create_menu():
             
             # Create menu product with new mandatory fields
             from decimal import Decimal
-            selling_price = request.form.get('selling_price')
-            selling_price_decimal = Decimal(str(selling_price)) if selling_price and selling_price.strip() else None
-            
             menu = Product(
                 name=request.form['name'],
                 product_code=request.form.get('product_code_id', product_code),
                 product_type='menu',
-                selling_price=selling_price_decimal,
-                sandwich_id=int(request.form['sandwich_id']) if request.form.get('sandwich_id') else None,
+                base_product_id=int(request.form['base_product_id']) if request.form.get('base_product_id') else None,
                 fries_size=request.form.get('fries_size'),
                 drink_size=request.form.get('drink_size'),
-                restaurant_id=request.form['restaurant_id'],
-                delivery_price_id=request.form['delivery_price_id'],
-                food_paper_cost_total=Decimal(str(request.form['food_paper_cost_total'])),
+                fries_fp_cost=Decimal(str(request.form.get('fries_fp_cost', '0'))),
+                drink_fp_cost=Decimal(str(request.form.get('drink_fp_cost', '0'))),
                 created_by=current_user.id
             )
             
             db.session.add(menu)
             db.session.flush()
             
-            # Calculate total cost (sandwich + fries + drink)
-            total_cost = Decimal('0')
-            
-            # Add sandwich cost
-            if menu.sandwich_id:
-                sandwich = Product.query.get(menu.sandwich_id)
-                if sandwich and sandwich.total_cost:
-                    total_cost += sandwich.total_cost
-            
-            # Add fries cost (predefined prices)
-            fries_prices = {'small': Decimal('2.50'), 'medium': Decimal('3.00'), 'large': Decimal('3.50')}
-            if menu.fries_size and menu.fries_size in fries_prices:
-                total_cost += fries_prices[menu.fries_size]
-            
-            # Add drink cost (predefined prices)
-            drink_prices = {'small': Decimal('1.50'), 'medium': Decimal('2.00'), 'large': Decimal('2.50')}
-            if menu.drink_size and menu.drink_size in drink_prices:
-                total_cost += drink_prices[menu.drink_size]
-            
-            menu.total_cost = total_cost
-            
-            # Calculate profit for menu (don't use calculate_costs as it would override total_cost)
-            if menu.selling_price:
-                menu.gross_profit = menu.selling_price - total_cost
-                menu.gross_profit_percent = (menu.gross_profit / menu.selling_price * 100) if menu.selling_price > 0 else Decimal('0')
+            # Calculate F&P cost using the method from Product model
+            menu.food_paper_cost_total = menu.calculate_fp_cost()
             
             db.session.commit()
             
@@ -219,14 +178,14 @@ def create_menu():
             db.session.rollback()
             flash(f'Error creating menu: {str(e)}', 'error')
     
-    # Get available sandwiches for the menu
-    sandwiches = Product.query.filter_by(
-        product_type='sandwich', 
+    # Get available products for the menu
+    products = Product.query.filter_by(
+        product_type='product', 
         is_active=True,
         created_by=current_user.id
     ).order_by(Product.name).all()
     
-    return render_template('products/create_menu.html', sandwiches=sandwiches)
+    return render_template('products/create_menu.html', sandwiches=products)
 
 @bp.route('/products/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -242,38 +201,29 @@ def edit_product(id):
     if request.method == 'POST':
         try:
             product.name = request.form['name']
-            
-            if request.form.get('selling_price'):
-                product.selling_price = float(request.form['selling_price'])
-            
+
             # Handle sandwich-specific updates
-            if product.product_type == 'sandwich':
+            if product.product_type == 'product':
                 # Update ingredients
                 ProductIngredient.query.filter_by(product_id=product.id).delete()
                 
                 ingredient_ids = request.form.getlist('ingredient_ids[]')
-                quantities = request.form.getlist('quantities[]')
                 
-                for i, ingredient_id in enumerate(ingredient_ids):
+                for ingredient_id in ingredient_ids:
                     if ingredient_id:
-                        quantity = float(quantities[i]) if i < len(quantities) and quantities[i] else 1.0
-                        
                         product_ingredient = ProductIngredient(
                             product_id=product.id,
-                            ingredient_id=int(ingredient_id),
-                            quantity=quantity
+                            ingredient_id=int(ingredient_id)
                         )
                         db.session.add(product_ingredient)
             
             # Handle menu-specific updates
             elif product.product_type == 'menu':
-                if request.form.get('sandwich_id'):
-                    product.sandwich_id = int(request.form['sandwich_id'])
+                if request.form.get('base_product_id'):
+                    product.base_product_id = int(request.form['base_product_id'])
                 product.fries_size = request.form.get('fries_size')
                 product.drink_size = request.form.get('drink_size')
             
-            # Recalculate costs
-            product.calculate_costs()
             db.session.commit()
             
             flash(f'{product.product_type.title()} "{product.name}" updated successfully!', 'success')
@@ -288,7 +238,7 @@ def edit_product(id):
     # Prepare data for edit form
     context = {'product': product}
     
-    if product.product_type == 'sandwich':
+    if product.product_type == 'product':
         ingredients = Ingredient.query.filter_by(is_active=True).order_by(Ingredient.category, Ingredient.name).all()
         ingredients_by_category = {}
         for ingredient in ingredients:
@@ -297,19 +247,17 @@ def edit_product(id):
             ingredients_by_category[ingredient.category].append(ingredient)
         context['ingredients_by_category'] = ingredients_by_category
         
-        # Get current ingredients with quantities
-        current_ingredients = {}
-        for pi in product.ingredients:
-            current_ingredients[pi.ingredient_id] = float(pi.quantity)
+        # Get current ingredients
+        current_ingredients = [pi.ingredient_id for pi in product.ingredients]
         context['current_ingredients'] = current_ingredients
         
     elif product.product_type == 'menu':
-        sandwiches = Product.query.filter_by(
-            product_type='sandwich', 
+        products = Product.query.filter_by(
+            product_type='product', 
             is_active=True,
             created_by=current_user.id
         ).order_by(Product.name).all()
-        context['sandwiches'] = sandwiches
+        context['sandwiches'] = products
     
     return render_template(f'products/edit_{product.product_type}.html', **context)
 
@@ -328,11 +276,11 @@ def delete_product(id):
         return redirect(url_for('main.products'))
     
     try:
-        # Check if this sandwich is used in any menus
-        if product.product_type == 'sandwich':
-            menus_using_sandwich = Product.query.filter_by(sandwich_id=product.id, is_active=True).count()
-            if menus_using_sandwich > 0:
-                error_msg = f'Impossibile eliminare "{product.name}" - è utilizzato in {menus_using_sandwich} menu.'
+        # Check if this product is used in any menus
+        if product.product_type == 'product':
+            menus_using_product = Product.query.filter_by(base_product_id=product.id, is_active=True).count()
+            if menus_using_product > 0:
+                error_msg = f'Impossibile eliminare "{product.name}" - è utilizzato in {menus_using_product} menu.'
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'success': False, 'message': error_msg}), 400
                 flash(error_msg, 'error')
@@ -379,7 +327,7 @@ def duplicate_product(id):
     try:
         # Generate unique product code for duplicate
         product_count = Product.query.filter_by(created_by=current_user.id).count()
-        prefix = "SW" if original.product_type == 'sandwich' else "MN"
+        prefix = "PR" if original.product_type == 'product' else "MN"
         attempts = 0
         max_attempts = 10
         product_code = None
@@ -400,10 +348,12 @@ def duplicate_product(id):
             name=f"{original.name} (Copy)",
             product_code=product_code,
             product_type=original.product_type,
-            selling_price=original.selling_price,
-            sandwich_id=original.sandwich_id,
+            food_paper_cost_total=original.food_paper_cost_total,
+            base_product_id=original.base_product_id,
             fries_size=original.fries_size,
             drink_size=original.drink_size,
+            fries_fp_cost=original.fries_fp_cost,
+            drink_fp_cost=original.drink_fp_cost,
             created_by=current_user.id
         )
         
@@ -411,17 +361,14 @@ def duplicate_product(id):
         db.session.flush()
         
         # Copy ingredients for sandwiches
-        if original.product_type == 'sandwich':
+        if original.product_type == 'product':
             for pi in original.ingredients:
                 duplicate_ingredient = ProductIngredient(
                     product_id=duplicate.id,
-                    ingredient_id=pi.ingredient_id,
-                    quantity=pi.quantity
+                    ingredient_id=pi.ingredient_id
                 )
                 db.session.add(duplicate_ingredient)
         
-        # Calculate costs
-        duplicate.calculate_costs()
         db.session.commit()
         
         flash(f'{original.product_type.title()} duplicated successfully as "{duplicate.name}"!', 'success')
@@ -465,11 +412,11 @@ def bulk_delete_products():
                     error_messages.append(f'No permission to delete "{product.name}"')
                     continue
                 
-                # Check if sandwich is used in menus
-                if product.product_type == 'sandwich':
-                    menus_using_sandwich = Product.query.filter_by(sandwich_id=product.id, is_active=True).count()
-                    if menus_using_sandwich > 0:
-                        error_messages.append(f'Cannot delete "{product.name}" - used in {menus_using_sandwich} menus')
+                # Check if product is used in menus
+                if product.product_type == 'product':
+                    menus_using_product = Product.query.filter_by(base_product_id=product.id, is_active=True).count()
+                    if menus_using_product > 0:
+                        error_messages.append(f'Cannot delete "{product.name}" - used in {menus_using_product} menus')
                         skipped_count += 1
                         continue
                 

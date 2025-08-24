@@ -98,15 +98,15 @@
                     <div class="mb-3">
                         <label class="text-muted small">Breakdown Costi</label>
                         <div class="cost-breakdown">
-                            {% set sandwich_cost = (product.sandwich.total_cost|float) if product.sandwich and product.sandwich.total_cost else 0.0 %}
-                            {% set fries_cost = 2.50 if product.fries_size == "small" else 3.00 if product.fries_size == "medium" else 3.50 if product.fries_size == "large" else 0.0 %}
-                            {% set drink_cost = 1.50 if product.drink_size == "small" else 2.00 if product.drink_size == "medium" else 2.50 if product.drink_size == "large" else 0.0 %}
-                            {% set calculated_total = sandwich_cost + fries_cost + drink_cost %}
+                            {% set base_product_cost = (product.base_product.food_paper_cost_total|float) if product.base_product and product.base_product.food_paper_cost_total else 0.0 %}
+                            {% set fries_cost = (product.fries_fp_cost|float) if product.fries_fp_cost else 0.0 %}
+                            {% set drink_cost = (product.drink_fp_cost|float) if product.drink_fp_cost else 0.0 %}
+                            {% set calculated_total = base_product_cost + fries_cost + drink_cost %}
                             
-                            {% if product.sandwich %}
+                            {% if product.base_product %}
                             <div class="d-flex justify-content-between mb-1">
-                                <small>{{ product.sandwich.name }}:</small>
-                                <small class="fw-medium">€{{ "%.3f"|format(sandwich_cost) }}</small>
+                                <small>{{ product.base_product.name }}:</small>
+                                <small class="fw-medium">€{{ "%.3f"|format(base_product_cost) }}</small>
                             </div>
                             {% endif %}
                             {% if product.fries_size %}
@@ -130,56 +130,26 @@
                     </div>
                     <div class="mb-3">
                         <label class="text-muted small">Costo Totale</label>
-                        {% set display_cost = calculated_total if calculated_total > 0 else (product.total_cost|float if product.total_cost else 0.0) %}
+                        {% set display_cost = calculated_total if calculated_total > 0 else (product.food_paper_cost_total|float if product.food_paper_cost_total else 0.0) %}
                         <div class="h4 mb-0">€{{ "%.3f"|format(display_cost) }}</div>
                     </div>
                     {% else %}
                     <!-- Regular Product Cost -->
                     <div class="mb-3">
-                        <label class="text-muted small">Costo Totale</label>
-                        <div class="h4 mb-0">€{{ "%.3f"|format(product.total_cost or 0) }}</div>
+                        <label class="text-muted small">Costo F&P Totale</label>
+                        <div class="h4 mb-0">€{{ "%.3f"|format(product.food_paper_cost_total or 0) }}</div>
                     </div>
                     {% endif %}
                     
-                    {% if product.selling_price %}
                     <div class="mb-3">
                         <label class="text-muted small">Prezzo di Vendita</label>
-                        <div class="h4 mb-0">€{{ "%.2f"|format(product.selling_price) }}</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="text-muted small">Profitto Lordo</label>
-                        {% if product.product_type == 'menu' %}
-                            {% set calculated_profit = (product.selling_price|float) - display_cost %}
-                            <div class="h4 mb-0 text-{{ 'success' if calculated_profit > 0 else 'danger' }}">
-                                €{{ "%.2f"|format(calculated_profit) }}
-                            </div>
-                        {% else %}
-                            <div class="h4 mb-0 text-{{ 'success' if product.gross_profit and product.gross_profit > 0 else 'danger' }}">
-                                €{{ "%.2f"|format(product.gross_profit or 0) }}
-                            </div>
-                        {% endif %}
+                        <div class="text-muted">Configurato nei listini ristorante</div>
                     </div>
                     
                     <div class="mb-0">
                         <label class="text-muted small">Margine</label>
-                        {% if product.product_type == 'menu' %}
-                            {% set calculated_margin = (calculated_profit / (product.selling_price|float) * 100) if product.selling_price and (product.selling_price|float) > 0 else 0 %}
-                            <div class="h4 mb-0 text-{{ 'success' if calculated_margin > 0 else 'danger' }}">
-                                {{ "%.1f"|format(calculated_margin) }}%
-                            </div>
-                        {% else %}
-                            <div class="h4 mb-0 text-{{ 'success' if product.gross_profit_percent and product.gross_profit_percent > 0 else 'danger' }}">
-                                {{ "%.1f"|format(product.gross_profit_percent or 0) }}%
-                            </div>
-                        {% endif %}
+                        <div class="text-muted">Calcolato nei listini ristorante</div>
                     </div>
-                    {% else %}
-                    <div class="text-center text-muted">
-                        <i class="bi bi-currency-euro display-4"></i>
-                        <p class="mt-2">Prezzo di vendita non impostato</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -195,8 +165,8 @@
                         {% else %}
                             Ingredienti
                         {% endif %}
-                        {% if product.product_type == 'menu' and product.sandwich %}
-                            <span class="badge bg-secondary ms-2">{{ product.sandwich.ingredients.count() }}</span>
+                        {% if product.product_type == 'menu' and product.base_product %}
+                            <span class="badge bg-secondary ms-2">{{ product.base_product.ingredients.count() }}</span>
                         {% else %}
                             <span class="badge bg-secondary ms-2">{{ product.ingredients.count() }}</span>
                         {% endif %}
@@ -211,14 +181,14 @@
                 </div>
                 <div class="card-body">
                     {% if product.product_type == 'menu' %}
-                        {% if product.sandwich and product.sandwich.ingredients.count() > 0 %}
+                        {% if product.base_product and product.base_product.ingredients.count() > 0 %}
                         <!-- Sandwich Ingredients -->
                         <div class="mb-4">
                             <h6 class="text-primary mb-3">
-                                <i class="bi bi-burger me-2"></i>{{ product.sandwich.name }}
+                                <i class="bi bi-burger me-2"></i>{{ product.base_product.name }}
                             </h6>
                             <div class="ingredient-layers">
-                                {% for product_ingredient in product.sandwich.ingredients %}
+                                {% for product_ingredient in product.base_product.ingredients %}
                                 <div class="ingredient-layer mb-3 {{ product_ingredient.ingredient.category.lower() }}">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="d-flex align-items-center">
@@ -236,15 +206,10 @@
                                             </div>
                                         </div>
                                         <div class="text-end">
-                                            <div class="fw-medium">
-                                                {{ product_ingredient.quantity }} {{ product_ingredient.ingredient.unit_type }}
+                                            <div class="fw-medium text-success">
+                                                €{{ "%.3f"|format(product_ingredient.ingredient.food_paper_cost) }}
                                             </div>
-                                            <small class="text-muted">
-                                                €{{ "%.3f"|format(product_ingredient.ingredient.price_per_unit) }} / {{ product_ingredient.ingredient.unit_type }}
-                                            </small>
-                                            <div class="text-success small">
-                                                €{{ "%.3f"|format(product_ingredient.quantity * product_ingredient.ingredient.price_per_unit) }}
-                                            </div>
+                                            <small class="text-muted">F&P Cost</small>
                                         </div>
                                     </div>
                                 </div>
@@ -266,7 +231,7 @@
                                             <strong>Patatine {{ product.fries_size.title() }}</strong>
                                         </div>
                                         <div class="text-success">
-                                            €{{ "2.50" if product.fries_size == "small" else "3.00" if product.fries_size == "medium" else "3.50" }}
+                                            €{{ "%.3f"|format(product.fries_fp_cost) }}
                                         </div>
                                     </div>
                                 </div>
@@ -279,7 +244,7 @@
                                             <strong>Bibita {{ product.drink_size.title() }}</strong>
                                         </div>
                                         <div class="text-success">
-                                            €{{ "1.50" if product.drink_size == "small" else "2.00" if product.drink_size == "medium" else "2.50" }}
+                                            €{{ "%.3f"|format(product.drink_fp_cost) }}
                                         </div>
                                     </div>
                                 </div>
@@ -313,15 +278,10 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <div class="fw-medium">
-                                        {{ product_ingredient.quantity }} {{ product_ingredient.ingredient.unit_type }}
+                                    <div class="fw-medium text-success">
+                                        €{{ "%.3f"|format(product_ingredient.ingredient.food_paper_cost) }}
                                     </div>
-                                    <small class="text-muted">
-                                        €{{ "%.3f"|format(product_ingredient.ingredient.price_per_unit) }} / {{ product_ingredient.ingredient.unit_type }}
-                                    </small>
-                                    <div class="text-success small">
-                                        €{{ "%.3f"|format(product_ingredient.quantity * product_ingredient.ingredient.price_per_unit) }}
-                                    </div>
+                                    <small class="text-muted">F&P Cost</small>
                                 </div>
                             </div>
                         </div>

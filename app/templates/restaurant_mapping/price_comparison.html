@@ -32,22 +32,29 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="product-filter" class="form-label">Filtra per Prodotto</label>
                             <input type="text" class="form-control" id="product-filter" 
                                    placeholder="Cerca prodotti...">
                         </div>
                         <div class="col-md-3">
+                            <label for="restaurant-filter" class="form-label">Ristoranti</label>
+                            <select class="form-select" id="restaurant-filter" multiple>
+                                {% for restaurant in restaurants %}
+                                <option value="{{ restaurant.id }}">{{ restaurant.name }} - {{ restaurant.city }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+click per selezione multipla</small>
+                        </div>
+                        <div class="col-md-2">
                             <label for="category-filter" class="form-label">Categoria</label>
                             <select class="form-select" id="category-filter">
-                                <option value="">Tutte le categorie</option>
-                                <option value="sandwich">Panini</option>
+                                <option value="">Tutte</option>
+                                <option value="product">Prodotti</option>
                                 <option value="menu">Menu</option>
-                                <option value="side">Contorni</option>
-                                <option value="drink">Bevande</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="sort-filter" class="form-label">Ordina per</label>
                             <select class="form-select" id="sort-filter">
                                 <option value="name">Nome Prodotto</option>
@@ -83,10 +90,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 25%">Prodotto</th>
-                                    <th style="width: 15%">Categoria</th>
-                                    <th style="width: 40%">Prezzi per Ristorante</th>
-                                    <th style="width: 10%">Min/Max</th>
-                                    <th style="width: 10%">Variazione</th>
+                                    <th style="width: 12%">Categoria</th>
+                                    <th style="width: 10%">F&P Cost</th>
+                                    <th style="width: 30%">Prezzi per Ristorante</th>
+                                    <th style="width: 23%">Gross Profit per Ristorante</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -96,7 +103,8 @@
                                     data-product-category="{{ item.product.product_type.lower() }}"
                                     data-min-price="{{ item.min_price }}"
                                     data-max-price="{{ item.max_price }}"
-                                    data-price-range="{{ item.price_range }}">
+                                    data-price-range="{{ item.price_range }}"
+                                    data-restaurants="{{ item.listings|map(attribute='restaurant_id')|join(',') }}">
                                     <td>
                                         <div>
                                             <strong>{{ item.product.name }}</strong>
@@ -109,30 +117,37 @@
                                         </span>
                                     </td>
                                     <td>
+                                        {% if item.product.product_type == 'menu' %}
+                                            {% set total_fp_cost = (item.product.food_paper_cost_total or 0) + (item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0) %}
+                                            <strong class="text-danger">€{{ "%.3f"|format(total_fp_cost) }}</strong>
+                                            <br><small class="text-muted">
+                                                Base: €{{ "%.2f"|format(item.product.food_paper_cost_total or 0) }}
+                                                {% if item.product.fries_fp_cost or item.product.drink_fp_cost %}
+                                                <br>+€{{ "%.2f"|format((item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0)) }}
+                                                {% endif %}
+                                            </small>
+                                        {% else %}
+                                            <strong class="text-danger">€{{ "%.3f"|format(item.product.food_paper_cost_total or 0) }}</strong>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         <div class="restaurant-prices">
                                             {% for listing in item.listings %}
-                                            <div class="price-item mb-1 p-2 bg-light rounded">
+                                            <div class="price-item mb-2 p-2 bg-light rounded">
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <strong>{{ listing.restaurant_name }}</strong>
-                                                        <small class="text-muted">({{ listing.city }})</small>
+                                                        <br><small class="text-muted">{{ listing.city }}</small>
                                                         {% if not listing.is_available %}
-                                                        <span class="badge bg-warning ms-1">Non Disponibile</span>
+                                                        <br><span class="badge bg-warning text-dark">Non Disponibile</span>
                                                         {% endif %}
                                                     </div>
                                                     <div class="text-end">
-                                                        <div>
-                                                            <span class="fw-bold text-primary">
-                                                                €{{ "%.2f"|format(listing.local_price) }}
-                                                            </span>
-                                                            <small class="text-muted">locale</small>
-                                                        </div>
-                                                        <div>
-                                                            <span class="fw-bold text-info">
-                                                                €{{ "%.2f"|format(listing.delivery_price) }}
-                                                            </span>
-                                                            <small class="text-muted">delivery</small>
-                                                        </div>
+                                                        <div class="fw-bold text-primary">€{{ "%.2f"|format(listing.local_price) }}</div>
+                                                        <small class="text-muted">On Site</small>
+                                                        <br>
+                                                        <div class="fw-bold text-info">€{{ "%.2f"|format(listing.delivery_price) }}</div>
+                                                        <small class="text-muted">Delivery</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -140,34 +155,37 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="text-center">
-                                            <div class="fw-bold text-success">
-                                                €{{ "%.2f"|format(item.min_price) }}
+                                        <div class="restaurant-profits">
+                                            {% for listing in item.listings %}
+                                            <div class="profit-item mb-2 p-2 bg-light rounded">
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <div class="text-center">
+                                                            {% set local_profit = listing.local_price - listing.total_fp_cost %}
+                                                            <div class="fw-bold {{ 'text-success' if local_profit >= 0 else 'text-danger' }}">
+                                                                €{{ "%.2f"|format(local_profit) }}
+                                                            </div>
+                                                            <small class="text-muted">On Site</small>
+                                                            <br><small class="{{ 'text-success' if local_profit >= 0 else 'text-danger' }}">
+                                                                {{ "%.1f"|format((local_profit / listing.local_price * 100) if listing.local_price > 0 else 0) }}%
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="text-center">
+                                                            {% set delivery_profit = listing.delivery_price - listing.total_fp_cost %}
+                                                            <div class="fw-bold {{ 'text-success' if delivery_profit >= 0 else 'text-danger' }}">
+                                                                €{{ "%.2f"|format(delivery_profit) }}
+                                                            </div>
+                                                            <small class="text-muted">Delivery</small>
+                                                            <br><small class="{{ 'text-success' if delivery_profit >= 0 else 'text-danger' }}">
+                                                                {{ "%.1f"|format((delivery_profit / listing.delivery_price * 100) if listing.delivery_price > 0 else 0) }}%
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <small class="text-muted">minimo</small>
-                                            <hr class="my-1">
-                                            <div class="fw-bold text-danger">
-                                                €{{ "%.2f"|format(item.max_price) }}
-                                            </div>
-                                            <small class="text-muted">massimo</small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="text-center">
-                                            {% if item.price_range > 0 %}
-                                            <div class="fw-bold text-warning">
-                                                €{{ "%.2f"|format(item.price_range) }}
-                                            </div>
-                                            <small class="text-muted">differenza</small>
-                                            <div class="mt-1">
-                                                {% set percentage = ((item.price_range / item.min_price) * 100) if item.min_price > 0 else 0 %}
-                                                <span class="badge bg-warning">
-                                                    +{{ "%.1f"|format(percentage) }}%
-                                                </span>
-                                            </div>
-                                            {% else %}
-                                            <span class="text-muted">-</span>
-                                            {% endif %}
+                                            {% endfor %}
                                         </div>
                                     </td>
                                 </tr>
@@ -180,19 +198,45 @@
         </div>
     </div>
 
-    <!-- Summary Statistics -->
+    <!-- Charts Section -->
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Gross Profit per Ristorante (On Site)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="grossProfitOnSiteChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Gross Profit per Ristorante (Delivery)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="grossProfitDeliveryChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profit Comparison Chart -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-bar-chart me-2"></i>Statistiche Riepilogative
+                        <i class="bi bi-graph-up me-2"></i>Confronto Margini di Profitto
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row" id="summary-stats">
-                        <!-- Stats will be calculated by JavaScript -->
-                    </div>
+                    <canvas id="profitComparisonChart" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -228,6 +272,7 @@
 {% block scripts %}
 <script>
 let originalData = [];
+let charts = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     // Store original data for filtering
@@ -239,20 +284,25 @@ document.addEventListener('DOMContentLoaded', function() {
             category: row.dataset.productCategory,
             minPrice: parseFloat(row.dataset.minPrice),
             maxPrice: parseFloat(row.dataset.maxPrice),
-            priceRange: parseFloat(row.dataset.priceRange)
+            priceRange: parseFloat(row.dataset.priceRange),
+            restaurants: row.dataset.restaurants.split(',').map(id => parseInt(id))
         });
     });
     
     calculateSummaryStats();
+    initializeCharts();
+    updateCharts(originalData);
     
     // Set up real-time filtering
     document.getElementById('product-filter').addEventListener('input', applyFilters);
+    document.getElementById('restaurant-filter').addEventListener('change', applyFilters);
     document.getElementById('category-filter').addEventListener('change', applyFilters);
     document.getElementById('sort-filter').addEventListener('change', applyFilters);
 });
 
 function applyFilters() {
     const productFilter = document.getElementById('product-filter').value.toLowerCase();
+    const restaurantFilter = Array.from(document.getElementById('restaurant-filter').selectedOptions).map(opt => parseInt(opt.value));
     const categoryFilter = document.getElementById('category-filter').value.toLowerCase();
     const sortBy = document.getElementById('sort-filter').value;
     
@@ -260,7 +310,8 @@ function applyFilters() {
     let filteredData = originalData.filter(item => {
         const nameMatch = !productFilter || item.name.includes(productFilter);
         const categoryMatch = !categoryFilter || item.category === categoryFilter;
-        return nameMatch && categoryMatch;
+        const restaurantMatch = restaurantFilter.length === 0 || item.restaurants.some(rid => restaurantFilter.includes(rid));
+        return nameMatch && categoryMatch && restaurantMatch;
     });
     
     // Sort data
@@ -287,8 +338,9 @@ function applyFilters() {
         tbody.appendChild(item.element);
     });
     
-    // Update stats
+    // Update stats and charts
     calculateSummaryStats(filteredData);
+    updateCharts(filteredData);
 }
 
 function calculateSummaryStats(data = originalData) {
@@ -389,6 +441,221 @@ function exportComparison() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function initializeCharts() {
+    // Initialize On Site Gross Profit Chart
+    const onSiteCtx = document.getElementById('grossProfitOnSiteChart').getContext('2d');
+    charts.grossProfitOnSite = new Chart(onSiteCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Gross Profit On Site (€)',
+                data: [],
+                backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize Delivery Gross Profit Chart
+    const deliveryCtx = document.getElementById('grossProfitDeliveryChart').getContext('2d');
+    charts.grossProfitDelivery = new Chart(deliveryCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Gross Profit Delivery (€)',
+                data: [],
+                backgroundColor: 'rgba(23, 162, 184, 0.8)',
+                borderColor: 'rgba(23, 162, 184, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize Profit Comparison Chart
+    const comparisonCtx = document.getElementById('profitComparisonChart').getContext('2d');
+    charts.profitComparison = new Chart(comparisonCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'On Site Profit (%)',
+                    data: [],
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                },
+                {
+                    label: 'Delivery Profit (%)',
+                    data: [],
+                    backgroundColor: 'rgba(23, 162, 184, 0.2)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    borderWidth: 2,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateCharts(filteredData) {
+    if (filteredData.length === 0) {
+        // Clear all charts
+        Object.values(charts).forEach(chart => {
+            chart.data.labels = [];
+            chart.data.datasets.forEach(dataset => dataset.data = []);
+            chart.update();
+        });
+        return;
+    }
+
+    // We need to parse data from the table since we don't have structured data in JS
+    // This is a simplified approach - for now we'll aggregate basic profit data
+    const restaurantData = {};
+    
+    filteredData.forEach(item => {
+        const row = item.element;
+        const profitItems = row.querySelectorAll('.profit-item');
+        
+        profitItems.forEach(profitItem => {
+            const restaurantName = profitItem.querySelector('strong').textContent;
+            
+            // Extract profit values
+            const profitValues = profitItem.querySelectorAll('.fw-bold');
+            if (profitValues.length >= 2) {
+                const onSiteProfit = parseFloat(profitValues[0].textContent.replace('€', ''));
+                const deliveryProfit = parseFloat(profitValues[1].textContent.replace('€', ''));
+                
+                // Extract percentages
+                const percentages = profitItem.querySelectorAll('small');
+                let onSitePercent = 0, deliveryPercent = 0;
+                percentages.forEach(small => {
+                    const text = small.textContent;
+                    if (text.includes('%')) {
+                        const percent = parseFloat(text.replace('%', ''));
+                        if (small.closest('.col-6').previousElementSibling === null) {
+                            onSitePercent = percent;
+                        } else {
+                            deliveryPercent = percent;
+                        }
+                    }
+                });
+                
+                if (!restaurantData[restaurantName]) {
+                    restaurantData[restaurantName] = {
+                        onSiteProfits: [],
+                        deliveryProfits: [],
+                        onSitePercents: [],
+                        deliveryPercents: []
+                    };
+                }
+                
+                restaurantData[restaurantName].onSiteProfits.push(onSiteProfit);
+                restaurantData[restaurantName].deliveryProfits.push(deliveryProfit);
+                restaurantData[restaurantName].onSitePercents.push(onSitePercent);
+                restaurantData[restaurantName].deliveryPercents.push(deliveryPercent);
+            }
+        });
+    });
+
+    // Calculate averages
+    const restaurants = Object.keys(restaurantData);
+    const onSiteAvgs = restaurants.map(name => {
+        const profits = restaurantData[name].onSiteProfits;
+        return profits.length > 0 ? profits.reduce((sum, p) => sum + p, 0) / profits.length : 0;
+    });
+    const deliveryAvgs = restaurants.map(name => {
+        const profits = restaurantData[name].deliveryProfits;
+        return profits.length > 0 ? profits.reduce((sum, p) => sum + p, 0) / profits.length : 0;
+    });
+    const onSitePercentAvgs = restaurants.map(name => {
+        const percents = restaurantData[name].onSitePercents;
+        return percents.length > 0 ? percents.reduce((sum, p) => sum + p, 0) / percents.length : 0;
+    });
+    const deliveryPercentAvgs = restaurants.map(name => {
+        const percents = restaurantData[name].deliveryPercents;
+        return percents.length > 0 ? percents.reduce((sum, p) => sum + p, 0) / percents.length : 0;
+    });
+
+    // Update On Site Chart
+    charts.grossProfitOnSite.data.labels = restaurants;
+    charts.grossProfitOnSite.data.datasets[0].data = onSiteAvgs;
+    charts.grossProfitOnSite.update();
+
+    // Update Delivery Chart
+    charts.grossProfitDelivery.data.labels = restaurants;
+    charts.grossProfitDelivery.data.datasets[0].data = deliveryAvgs;
+    charts.grossProfitDelivery.update();
+
+    // Update Comparison Chart
+    charts.profitComparison.data.labels = restaurants;
+    charts.profitComparison.data.datasets[0].data = onSitePercentAvgs;
+    charts.profitComparison.data.datasets[1].data = deliveryPercentAvgs;
+    charts.profitComparison.update();
 }
 </script>
 {% endblock %}

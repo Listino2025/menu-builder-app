@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Modifica Prodotto - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.products') }}">Prodotti</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.product_detail', id=product.id) }}">{{ product.name }}</a></li>
+                    <li class="breadcrumb-item active">Modifica</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">
+                <i class="bi bi-burger me-2 text-primary"></i>
+                Modifica Prodotto: {{ product.name }}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Dettagli Prodotto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nome Prodotto *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ product.name }}" required maxlength="100">
+                            <div class="invalid-feedback">
+                                Inserisci un nome per il prodotto.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="food_paper_cost_total" class="form-label">Costo F&P Totale (€) *</label>
+                            <input type="number" class="form-control" id="food_paper_cost_total" name="food_paper_cost_total" 
+                                   value="{{ product.food_paper_cost_total or '' }}" step="0.001" min="0" required>
+                            <div class="form-text">Costo totale Food & Paper per questo prodotto</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6 class="mb-3">
+                                <i class="bi bi-list-ul me-2"></i>Ingredienti
+                            </h6>
+                            <div class="row">
+                                {% for category, ingredients in ingredients_by_category.items() %}
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="text-muted mb-2">
+                                        <i class="bi bi-{{ 'bread-slice' if category == 'BASE' else 'egg-fried' if category == 'PROTEIN' else 'circle' if category == 'CHEESE' else 'flower2' if category == 'VEGETABLE' else 'droplet' if category == 'SAUCE' else 'box' }} me-1"></i>
+                                        {{ category.replace('_', ' ').title() }}
+                                    </h6>
+                                    {% for ingredient in ingredients %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="ingredient_ids[]" value="{{ ingredient.id }}" 
+                                               id="ingredient_{{ ingredient.id }}"
+                                               {{ 'checked' if ingredient.id in current_ingredients else '' }}>
+                                        <label class="form-check-label" for="ingredient_{{ ingredient.id }}">
+                                            {{ ingredient.name }}
+                                            <small class="text-muted">(€{{ "%.3f"|format(ingredient.food_paper_cost) }} F&P)</small>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i>Salva Modifiche
+                            </button>
+                            <a href="{{ url_for('main.product_detail', id=product.id) }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-2"></i>Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-calculate F&P cost based on selected ingredients
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('input[name="ingredient_ids[]"]');
+    const totalCostInput = document.getElementById('food_paper_cost_total');
+    
+    function updateTotalCost() {
+        let total = 0;
+        
+        checkboxes.forEach(function(checkbox) {
+            if (checkbox.checked) {
+                const label = checkbox.nextElementSibling;
+                const costMatch = label.textContent.match(/€([0-9.]+)/);
+                if (costMatch) {
+                    total += parseFloat(costMatch[1]);
+                }
+            }
+        });
+        
+        totalCostInput.value = total.toFixed(3);
+    }
+    
+    // Update cost when ingredients change
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateTotalCost);
+    });
+    
+    // Calculate initial cost
+    updateTotalCost();
+});
+</script>
+{% endblock %}
