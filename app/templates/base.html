@@ -221,24 +221,9 @@
     
     <!-- Custom JavaScript -->
     {% if request.endpoint != 'main.create_sandwich' %}
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% endif %}
     
     {% block scripts %}{% endblock %}
-    
-    <!-- PWA Service Worker -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/static/sw.js')
-                .then(function(registration) {
-                    console.log('ServiceWorker registration successful');
-                })
-                .catch(function(error) {
-                    console.log('ServiceWorker registration failed');
-                });
-            });
-        }
-    </script>
 </body>
 </html>

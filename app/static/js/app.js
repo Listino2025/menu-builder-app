@@ -7,7 +7,20 @@ class MenuBuilder {
     constructor() {
         this.selectedIngredients = [];
         this.totalCost = 0;
+        // Check if we're on an ingredients page and skip initialization
+        if (this.isIngredientPage()) {
+            console.log('App.js debug - Skipping initialization on ingredients page');
+            return;
+        }
+        console.log('App.js debug - Initializing MenuBuilder');
         this.init();
+    }
+    
+    isIngredientPage() {
+        const isIngredient = window.location.pathname.includes('/ingredients');
+        console.log('App.js debug - Current path:', window.location.pathname);
+        console.log('App.js debug - Is ingredient page:', isIngredient);
+        return isIngredient;
     }
 
     init() {
@@ -297,11 +310,14 @@ class MenuBuilder {
         const ingredient = this.getIngredientData(ingredientId);
         if (!ingredient) return;
 
-        // Determine default quantity based on unit type
-        const defaultQuantity = this.getDefaultQuantity(ingredient.unit);
+        // Check if ingredient is already added
+        const existingLayer = document.querySelector(`[data-ingredient-id="${ingredientId}"]`);
+        if (existingLayer) {
+            return; // Don't add duplicate ingredients
+        }
         
-        // Create ingredient layer with quantity input
-        const layer = this.createIngredientLayer(ingredient, defaultQuantity);
+        // Create ingredient layer
+        const layer = this.createIngredientLayer(ingredient);
 
         const sandwichBuilder = document.getElementById('sandwich-builder');
         
@@ -331,84 +347,36 @@ class MenuBuilder {
         return defaultQuantities[unitType] || 1;
     }
 
-    createIngredientLayer(ingredient, quantity) {
-        // Creating ingredient layer
+    createIngredientLayer(ingredient) {
+        // Creating ingredient layer with simplified approach - no quantities, fixed F&P cost
         const layer = document.createElement('div');
         layer.className = `sandwich-layer ${ingredient.category.toLowerCase()}`;
         layer.setAttribute('data-ingredient-id', ingredient.id);
-        layer.setAttribute('data-ingredient-price', ingredient.price);
-        layer.setAttribute('data-ingredient-unit', ingredient.unit);
-        
-        // Determine step and increment values based on unit
-        let stepValue, incrementValue, placeholder;
-        
-        if (ingredient.unit === 'pieces' || ingredient.unit === 'slices' || ingredient.unit === 'portions') {
-            stepValue = '1';
-            incrementValue = 1;
-            placeholder = `${quantity} ${ingredient.unit}`;
-        } else if (ingredient.unit === 'g' || ingredient.unit === 'ml') {
-            stepValue = '1';
-            incrementValue = 10; // 10g or 10ml increments
-            placeholder = `${quantity} ${ingredient.unit}`;
-        } else { // kg, l
-            stepValue = '0.001';
-            incrementValue = 0.010; // 10g or 10ml increments in kg/l
-            placeholder = `${quantity} ${ingredient.unit}`;
-        }
+        layer.setAttribute('data-ingredient-fp-cost', ingredient.fpCost);
         
         layer.innerHTML = `
             <div class="d-flex align-items-center justify-content-between">
                 <div class="flex-grow-1">
                     <div class="fw-medium">${ingredient.name}</div>
-                    <small class="text-muted">€${parseFloat(ingredient.price).toFixed(3)} / ${ingredient.unit}</small>
+                    <small class="text-muted">€${parseFloat(ingredient.fpCost).toFixed(3)} F&P</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <div class="quantity-control d-flex align-items-center gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-danger quantity-decrease" 
-                                data-change="-${incrementValue}">-</button>
-                        <input type="number" class="form-control form-control-sm quantity-input text-center" 
-                               value="${quantity}" 
-                               step="${stepValue}" 
-                               min="0"
-                               placeholder="${placeholder}"
-                               data-ingredient-id="${ingredient.id}"
-                               style="width: 70px; border-radius: 8px 0 0 8px;">
-                        <span class="quantity-unit small fw-bold" 
-                              style="background-color: #FFC72C; color: #27251F; padding: 6px 8px; border: 1px solid #dee2e6; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.75rem; display: flex; align-items: center;">
-                            ${ingredient.unit}
-                        </span>
-                        <button type="button" class="btn btn-sm btn-outline-success quantity-increase" 
-                                data-change="${incrementValue}">+</button>
-                    </div>
-                    <button type="button" class="layer-remove">
+                    <button type="button" class="btn btn-sm btn-outline-danger layer-remove">
                         <i class="bi bi-x"></i>
                     </button>
                 </div>
             </div>
         `;
         
+        // Add event listener for remove button
+        const removeBtn = layer.querySelector('.layer-remove');
+        removeBtn.addEventListener('click', (e) => {
+            this.removeLayer(e.target);
+        });
+        
         return layer;
     }
 
-    adjustQuantity(button, change) {
-        // Find input in the new input-group structure
-        const quantityControl = button.closest('.quantity-control');
-        const input = quantityControl.querySelector('.quantity-input');
-        const currentValue = parseFloat(input.value) || 0;
-        const newValue = Math.max(0, currentValue + change);
-        
-        // Round to appropriate precision based on unit
-        const unit = input.closest('.sandwich-layer').getAttribute('data-ingredient-unit');
-        if (unit === 'pieces' || unit === 'slices' || unit === 'portions') {
-            input.value = Math.round(newValue);
-        } else if (unit === 'g' || unit === 'ml') {
-            input.value = Math.round(newValue); // Integer grams/ml
-        } else { // kg, l
-            input.value = newValue.toFixed(3); // 3 decimal places for kg/l
-        }
-        
-        this.calculateCosts();
-    }
 
     removeLayer(button) {
         const layer = button.closest('.sandwich-layer');
@@ -445,61 +413,6 @@ class MenuBuilder {
         }
     }
 
-    createSandwichLayer(ingredient) {
-        const layer = document.createElement('div');
-        layer.className = `sandwich-layer ${ingredient.category.toLowerCase()}`;
-        layer.setAttribute('data-ingredient-id', ingredient.id);
-        layer.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="drag-handle me-2">
-                        <i class="bi bi-grip-vertical"></i>
-                    </span>
-                    <strong>${ingredient.name}</strong>
-                    <small class="text-muted ms-2">€${ingredient.price_per_unit}/${ingredient.unit_type}</small>
-                </div>
-                <div class="d-flex align-items-center">
-                    <input type="number" class="form-control form-control-sm quantity-input me-2" 
-                           value="1" min="0.1" step="0.1" style="width: 80px;"
-                           data-ingredient-id="${ingredient.id}">
-                    <button type="button" class="layer-remove" onclick="menuBuilder.removeIngredientFromSandwich('${ingredient.id}')">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Add event listeners for quantity input
-        const quantityInput = layer.querySelector('.quantity-input');
-        quantityInput.addEventListener('input', this.calculateCosts.bind(this));
-        quantityInput.addEventListener('change', this.calculateCosts.bind(this));
-        quantityInput.addEventListener('keyup', this.calculateCosts.bind(this));
-        
-        // Add event listeners for +/- buttons
-        const decreaseBtn = layer.querySelector('.quantity-decrease');
-        const increaseBtn = layer.querySelector('.quantity-increase');
-        const removeBtn = layer.querySelector('.layer-remove');
-        
-        decreaseBtn.addEventListener('click', (e) => {
-            const change = parseFloat(e.target.getAttribute('data-change'));
-            this.adjustQuantity(e.target, change);
-        });
-        
-        increaseBtn.addEventListener('click', (e) => {
-            const change = parseFloat(e.target.getAttribute('data-change'));
-            this.adjustQuantity(e.target, change);
-        });
-        
-        removeBtn.addEventListener('click', (e) => {
-            this.removeLayer(e.target);
-        });
-        
-        // Make sure input is not readonly or disabled
-        quantityInput.removeAttribute('readonly');
-        quantityInput.removeAttribute('disabled');
-
-        return layer;
-    }
 
     // Cost Calculations
     calculateCosts() {
@@ -507,17 +420,12 @@ class MenuBuilder {
         let totalCost = 0;
 
         layers.forEach(layer => {
-            const ingredientId = layer.getAttribute('data-ingredient-id');
-            const quantityInput = layer.querySelector('.quantity-input');
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const pricePerUnit = parseFloat(layer.getAttribute('data-ingredient-price')) || 0;
-            
-            totalCost += pricePerUnit * quantity;
+            const fpCost = parseFloat(layer.getAttribute('data-ingredient-fp-cost')) || 0;
+            totalCost += fpCost;
         });
 
         this.totalCost = totalCost;
         this.updateCostDisplay();
-        this.calculateProfit();
         this.updateIngredientInputs();
     }
 
@@ -528,17 +436,14 @@ class MenuBuilder {
         // Clear existing inputs
         ingredientInputsContainer.innerHTML = '';
 
-        // Add hidden inputs for each ingredient with quantity
+        // Add hidden inputs for each ingredient
         const layers = document.querySelectorAll('.sandwich-layer');
         layers.forEach((layer, index) => {
             const ingredientId = layer.getAttribute('data-ingredient-id');
-            const quantityInput = layer.querySelector('.quantity-input');
-            const quantity = quantityInput.value;
 
             // Create inputs in the format expected by the backend
             const hiddenInputs = `
                 <input type="hidden" name="ingredient_ids[]" value="${ingredientId}">
-                <input type="hidden" name="quantities[]" value="${quantity}">
             `;
             
             ingredientInputsContainer.insertAdjacentHTML('beforeend', hiddenInputs);
@@ -675,8 +580,7 @@ class MenuBuilder {
         const ingredientData = {
             id: ingredientId,
             name: ingredientElement.getAttribute('data-ingredient-name'),
-            price: parseFloat(ingredientElement.getAttribute('data-ingredient-price')),
-            unit: ingredientElement.getAttribute('data-ingredient-unit'),
+            fpCost: parseFloat(ingredientElement.getAttribute('data-ingredient-fp-cost')),
             category: ingredientElement.getAttribute('data-ingredient-category')
         };
         

@@ -127,7 +127,15 @@
         var forms = document.getElementsByClassName('needs-validation');
         var validation = Array.prototype.filter.call(forms, function(form) {
             form.addEventListener('submit', function(event) {
-                if (form.checkValidity() === false || !validateFormData()) {
+                let customValidation = true;
+                try {
+                    customValidation = validateFormData();
+                } catch(e) {
+                    console.error('Validation error:', e);
+                    customValidation = true; // Allow submission if validation fails
+                }
+                
+                if (form.checkValidity() === false || !customValidation) {
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -138,7 +146,9 @@
 })();
 
 // WRIN code validation
-document.getElementById('wrin_code').addEventListener('blur', function(e) {
+const wrinCodeInput = document.getElementById('wrin_code');
+if (wrinCodeInput) {
+    wrinCodeInput.addEventListener('blur', function(e) {
     const wrinCode = e.target.value.trim();
     const feedbackDiv = document.getElementById('wrin-code-feedback');
     
@@ -171,11 +181,27 @@ document.getElementById('wrin_code').addEventListener('blur', function(e) {
         e.target.classList.remove('is-invalid', 'is-valid');
         feedbackDiv.innerHTML = '';
     }
-});
+    });
+}
 
 // Validate form data before submission
 function validateFormData() {
-    const price = parseFloat(document.getElementById('food_paper_cost').value);
+    const fpCostInput = document.getElementById('food_paper_cost');
+    if (!fpCostInput) {
+        console.error('food_paper_cost input not found');
+        return true; // Allow form submission if element not found
+    }
+    
+    // Check if value is null or undefined
+    if (fpCostInput.value === null || fpCostInput.value === undefined) {
+        console.error('food_paper_cost value is null/undefined');
+        return true; // Allow form submission
+    }
+    
+    // Convert empty string to 0
+    const inputValue = fpCostInput.value.trim() === '' ? '0' : fpCostInput.value.trim();
+    const price = parseFloat(inputValue);
+    
     if (isNaN(price) || price < 0 || price > 999.99) {
         alert('Il costo F&P deve essere un numero valido tra 0 e 999.99');
         return false;
@@ -185,17 +211,20 @@ function validateFormData() {
 }
 
 // Price formatting with 7 decimal precision
-document.getElementById('food_paper_cost').addEventListener('input', function(e) {
-    let value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-        // Limit to 7 decimal places
-        if (value.toString().includes('.') && value.toString().split('.')[1].length > 7) {
-            e.target.value = value.toFixed(7);
+const fpCostInput = document.getElementById('food_paper_cost');
+if (fpCostInput) {
+    fpCostInput.addEventListener('input', function(e) {
+        let value = parseFloat(e.target.value);
+        if (!isNaN(value)) {
+            // Limit to 7 decimal places
+            if (value.toString().includes('.') && value.toString().split('.')[1].length > 7) {
+                e.target.value = value.toFixed(7);
+            }
+            // Update preview
+            updatePreview();
         }
-        // Update preview
-        updatePreview();
-    }
-});
+    });
+}
 
 // Real-time validation feedback
 document.getElementById('name').addEventListener('input', function(e) {

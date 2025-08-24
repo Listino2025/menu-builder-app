@@ -242,14 +242,7 @@ document.getElementById('wrin_code').addEventListener('blur', function(e) {
 
 // Validate form data before submission
 function validateFormData() {
-    const unitType = document.getElementById('unit_type').value;
-    const validUnits = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions'];
-    
-    if (!validUnits.includes(unitType)) {
-        alert('Tipo di unità non valido. Seleziona una delle opzioni disponibili.');
-        return false;
-    }
-    
+    // Removed unit_type validation since we no longer have that field
     const price = parseFloat(document.getElementById('food_paper_cost').value);
     if (isNaN(price) || price < 0 || price > 999.9999999) {
         alert('Il prezzo deve essere un numero valido tra 0 e 999.9999999');

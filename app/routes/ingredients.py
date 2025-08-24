@@ -56,22 +56,11 @@ def create_ingredient():
                                          temp_zones=Ingredient.TEMP_ZONES,
                                          form_data=request.form)
             
-            # Validate unit type
-            valid_units = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']
-            unit_type = request.form['unit_type']
-            if unit_type not in valid_units:
-                flash(f'Invalid unit type. Please select from: {", ".join(valid_units)}', 'error')
-                return render_template('ingredients/create.html', 
-                                     categories=Ingredient.CATEGORIES,
-                                     temp_zones=Ingredient.TEMP_ZONES,
-                                     form_data=request.form)
-            
             ingredient = Ingredient(
                 wrin_code=wrin_code,
                 name=request.form['name'],
                 category=request.form['category'],
-                price_per_unit=float(request.form['price_per_unit']),
-                unit_type=unit_type,
+                food_paper_cost=float(request.form['food_paper_cost']),
                 temperature_zone=request.form.get('temperature_zone'),
                 created_by=current_user.id
             )
@@ -83,7 +72,7 @@ def create_ingredient():
             return redirect(url_for('main.ingredients'))
             
         except ValueError as e:
-            flash('Invalid price format. Please enter a valid number.', 'error')
+            flash('Invalid cost format. Please enter a valid number.', 'error')
             return render_template('ingredients/create.html', 
                                  categories=Ingredient.CATEGORIES,
                                  temp_zones=Ingredient.TEMP_ZONES,
@@ -92,8 +81,6 @@ def create_ingredient():
             db.session.rollback()
             if 'wrin_code' in str(e).lower() and 'unique' in str(e).lower():
                 flash(f'WRIN code already exists. Please use a different code.', 'error')
-            elif 'unit_type' in str(e).lower() and 'check' in str(e).lower():
-                flash(f'Invalid unit type. Please select a valid unit.', 'error')
             else:
                 flash(f'Error creating ingredient: {str(e)}', 'error')
             return render_template('ingredients/create.html', 
@@ -124,21 +111,10 @@ def edit_ingredient(id):
                                          categories=Ingredient.CATEGORIES,
                                          temp_zones=Ingredient.TEMP_ZONES)
             
-            # Validate unit type
-            valid_units = ['kg', 'g', 'hg', 'dag', 'dg', 'l', 'dl', 'cl', 'ml', 'pieces', 'slices', 'portions']
-            unit_type = request.form['unit_type']
-            if unit_type not in valid_units:
-                flash(f'Invalid unit type. Please select from: {", ".join(valid_units)}', 'error')
-                return render_template('ingredients/edit.html', 
-                                     ingredient=ingredient,
-                                     categories=Ingredient.CATEGORIES,
-                                     temp_zones=Ingredient.TEMP_ZONES)
-            
             ingredient.wrin_code = wrin_code
             ingredient.name = request.form['name']
             ingredient.category = request.form['category']
-            ingredient.price_per_unit = float(request.form['price_per_unit'])
-            ingredient.unit_type = unit_type
+            ingredient.food_paper_cost = float(request.form['food_paper_cost'])
             ingredient.temperature_zone = request.form.get('temperature_zone')
             
             db.session.commit()
@@ -147,13 +123,13 @@ def edit_ingredient(id):
             return redirect(url_for('main.ingredients'))
             
         except ValueError as e:
-            flash('Invalid price format. Please enter a valid number.', 'error')
+            flash('Invalid cost format. Please enter a valid number.', 'error')
         except Exception as e:
             db.session.rollback()
+            print(f"DEBUG: Error updating ingredient: {str(e)}")  # Debug log
+            print(f"DEBUG: Form data: {dict(request.form)}")  # Debug log
             if 'wrin_code' in str(e).lower() and 'unique' in str(e).lower():
                 flash(f'WRIN code already exists. Please use a different code.', 'error')
-            elif 'unit_type' in str(e).lower() and 'check' in str(e).lower():
-                flash(f'Invalid unit type. Please select a valid unit.', 'error')
             else:
                 flash(f'Error updating ingredient: {str(e)}', 'error')
     
@@ -270,7 +246,7 @@ def import_ingredients():
                 
                 # Check if it's standard restaurant format
                 is_standard_format = False
-                standard_columns = ['Material group', 'WRIN code', 'Article description', 'Case unit', 'Temperature zone', 'Price']
+                standard_columns = ['Material group', 'WRIN code', 'Article description', 'Temperature zone', 'Price']
                 
                 # Clean column names and check for standard format
                 df.columns = [str(col).strip() for col in df.columns]
@@ -284,7 +260,6 @@ def import_ingredients():
                         'Article description': 'name',
                         'Material group': 'material_group_raw',
                         'WRIN code': 'wrin_code',
-                        'Case unit': 'unit_type_raw',
                         'Temperature zone': 'temperature_zone_raw',
                         'Price': 'price_raw'
                     })
@@ -327,14 +302,6 @@ def import_ingredients():
                     
                     df['category'] = df.apply(lambda row: map_category(row['material_group_raw'], row['name']), axis=1)
                     
-                    # Convert unit types
-                    unit_mapping = {
-                        'CES': 'pieces',
-                        'CAR': 'kg',
-                        'LT': 'l',
-                        'KG': 'kg'
-                    }
-                    df['unit_type'] = df['unit_type_raw'].map(unit_mapping).fillna('pieces')
                     
                     # Convert temperature zones
                     temp_mapping = {
@@ -361,11 +328,11 @@ def import_ingredients():
                         except:
                             return 0.0
                     
-                    df['price_per_unit'] = df['price_raw'].apply(convert_price)
+                    df['food_paper_cost'] = df['price_raw'].apply(convert_price)
                     
                 else:
                     # Standard format check
-                    required_columns = ['name', 'category', 'price_per_unit', 'unit_type']
+                    required_columns = ['name', 'category', 'food_paper_cost']
                     df.columns = df.columns.str.lower().str.strip()
                     
                     missing_columns = [col for col in required_columns if col not in df.columns]
@@ -429,7 +396,7 @@ def import_ingredients():
                         # Skip rows with missing required data
                         if pd.isna(row['name']) or row['name'] == '' or str(row['name']).strip() == '':
                             continue
-                        if pd.isna(row['price_per_unit']) or row['price_per_unit'] == '':
+                        if pd.isna(row['food_paper_cost']) or row['food_paper_cost'] == '':
                             continue
                         
                         # Check if ingredient already exists (only in add mode)
@@ -445,8 +412,7 @@ def import_ingredients():
                             # Update existing ingredient
                             existing.name = row['name']
                             existing.category = row['category']
-                            existing.price_per_unit = float(row['price_per_unit'])
-                            existing.unit_type = row['unit_type']
+                            existing.food_paper_cost = float(row['food_paper_cost'])
                             if 'wrin_code' in df.columns:
                                 existing.wrin_code = row['wrin_code'] if pd.notna(row['wrin_code']) else None
                             if 'temperature_zone' in df.columns:
@@ -459,8 +425,7 @@ def import_ingredients():
                                 wrin_code=row['wrin_code'] if 'wrin_code' in df.columns and pd.notna(row['wrin_code']) else None,
                                 name=row['name'],
                                 category=row['category'],
-                                price_per_unit=float(row['price_per_unit']),
-                                unit_type=row['unit_type'],
+                                food_paper_cost=float(row['food_paper_cost']),
                                 temperature_zone=row['temperature_zone'] if 'temperature_zone' in df.columns and pd.notna(row['temperature_zone']) else None,
                                 created_by=current_user.id
                             )
@@ -511,10 +476,10 @@ def import_ingredients():
     # Show sample CSV format
     sample_data = {
         'Sample CSV Format': [
-            'wrin_code,name,category,price_per_unit,unit_type,temperature_zone',
-            'BUN001,Regular Bun,BASE,0.25,pieces,AMBIENT',
-            'BEEF001,Beef Patty,PROTEIN,2.50,pieces,FROZEN',
-            'CHED001,Cheddar Cheese,CHEESE,0.30,slices,CHILLED'
+            'wrin_code,name,category,food_paper_cost,temperature_zone',
+            'BUN001,Regular Bun,BASE,0.25,AMBIENT',
+            'BEEF001,Beef Patty,PROTEIN,2.50,FROZEN',
+            'CHED001,Cheddar Cheese,CHEESE,0.30,CHILLED'
         ]
     }
     
@@ -529,15 +494,14 @@ def export_ingredients():
         
         # Create CSV data
         csv_data = []
-        csv_data.append(['WRIN Code', 'Name', 'Category', 'Price per Unit', 'Unit Type', 'Temperature Zone', 'Created By'])
+        csv_data.append(['WRIN Code', 'Name', 'Category', 'Food Paper Cost', 'Temperature Zone', 'Created By'])
         
         for ing in ingredients:
             csv_data.append([
                 ing.wrin_code or '',
                 ing.name,
                 ing.category,
-                float(ing.price_per_unit),
-                ing.unit_type,
+                float(ing.food_paper_cost),
                 ing.temperature_zone or '',
                 ing.creator.username if ing.creator else ''
             ])
