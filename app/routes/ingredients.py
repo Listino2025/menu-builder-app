@@ -117,9 +117,17 @@ def edit_ingredient(id):
             ingredient.food_paper_cost = float(request.form['food_paper_cost'])
             ingredient.temperature_zone = request.form.get('temperature_zone')
             
+            # Synchronize F&P costs after updating ingredient
+            updated_products = synchronize_fp_costs_after_ingredient_update(id)
+            
             db.session.commit()
             
-            flash(f'Ingredient "{ingredient.name}" updated successfully!', 'success')
+            # Show success message with sync info
+            if updated_products:
+                flash(f'Ingredient "{ingredient.name}" updated successfully! Synchronized {len(updated_products)} products/menus.', 'success')
+            else:
+                flash(f'Ingredient "{ingredient.name}" updated successfully!', 'success')
+            
             return redirect(url_for('main.ingredients'))
             
         except ValueError as e:
@@ -525,3 +533,64 @@ def export_ingredients():
     except Exception as e:
         flash(f'Error exporting ingredients: {str(e)}', 'error')
         return redirect(url_for('main.ingredients'))
+
+
+def synchronize_fp_costs_after_ingredient_update(ingredient_id):
+    """
+    Synchronize F&P costs throughout the system after an ingredient update.
+    Returns list of updated products for notification purposes.
+    """
+    from app.models import Product, ProductIngredient
+    
+    updated_products = []
+    
+    try:
+        # 1. Find all products that use this ingredient
+        affected_products = (Product.query
+                           .join(ProductIngredient)
+                           .filter(ProductIngredient.ingredient_id == ingredient_id)
+                           .filter(Product.product_type == 'product')  # Only regular products first
+                           .all())
+        
+        # 2. Recalculate cost for each affected product
+        for product in affected_products:
+            old_cost = product.food_paper_cost_total
+            new_cost = product.recalculate_cost()
+            
+            if old_cost != new_cost:
+                updated_products.append({
+                    'name': product.name,
+                    'type': 'product',
+                    'old_cost': float(old_cost),
+                    'new_cost': float(new_cost)
+                })
+                print(f"Updated product {product.name}: {old_cost} → {new_cost}")
+        
+        # 3. Find all menus that use the affected products
+        affected_product_ids = [p.id for p in affected_products]
+        if affected_product_ids:
+            affected_menus = (Product.query
+                            .filter(Product.product_type == 'menu')
+                            .filter(Product.base_product_id.in_(affected_product_ids))
+                            .all())
+            
+            # 4. Recalculate cost for each affected menu
+            for menu in affected_menus:
+                old_cost = menu.food_paper_cost_total  
+                new_cost = menu.recalculate_cost()
+                
+                if old_cost != new_cost:
+                    updated_products.append({
+                        'name': menu.name,
+                        'type': 'menu', 
+                        'old_cost': float(old_cost),
+                        'new_cost': float(new_cost)
+                    })
+                    print(f"Updated menu {menu.name}: {old_cost} → {new_cost}")
+        
+        return updated_products
+        
+    except Exception as e:
+        print(f"Error in F&P synchronization: {str(e)}")
+        # Don't raise exception to avoid breaking the main ingredient update
+        return []

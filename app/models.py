@@ -119,6 +119,29 @@ class Product(db.Model):
         """Get formatted list of ingredients"""
         return [pi.ingredient.name for pi in self.ingredients.order_by(ProductIngredient.id)]
     
+    def recalculate_cost(self):
+        """Recalculate total F&P cost based on current ingredients"""
+        total_cost = 0
+        
+        # Sum up all ingredient costs for regular products
+        if self.product_type == 'product':
+            for product_ingredient in self.ingredients:
+                total_cost += float(product_ingredient.ingredient.food_paper_cost)
+        
+        # For menus, include base product + fries + drink
+        elif self.product_type == 'menu':
+            if self.base_product_id:
+                base_product = Product.query.get(self.base_product_id)
+                if base_product:
+                    total_cost += float(base_product.food_paper_cost_total)
+            
+            # Add fries and drink costs
+            total_cost += float(self.fries_fp_cost or 0)
+            total_cost += float(self.drink_fp_cost or 0)
+        
+        self.food_paper_cost_total = round(total_cost, 2)
+        return self.food_paper_cost_total
+    
     def __repr__(self):
         return f'<Product {self.name}>'
 

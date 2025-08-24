@@ -146,6 +146,72 @@ def restaurant_detail(restaurant_id):
                          restaurant=restaurant,
                          products_with_pricing=products_with_pricing)
 
+@bp.route('/restaurants/<int:restaurant_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_restaurant(restaurant_id):
+    """Edit restaurant information"""
+    if not current_user.is_manager():
+        flash('Non hai i permessi per modificare i ristoranti.', 'error')
+        return redirect(url_for('restaurant_mapping.restaurants'))
+    
+    restaurant = Restaurant.query.get_or_404(restaurant_id)
+    
+    if request.method == 'POST':
+        try:
+            # Update restaurant data
+            restaurant.name = request.form['name'].strip()
+            restaurant.address = request.form['address'].strip()
+            restaurant.city = request.form['city'].strip()
+            restaurant.postal_code = request.form.get('postal_code', '').strip() or None
+            restaurant.restaurant_code = request.form['restaurant_code'].strip()
+            restaurant.phone = request.form.get('phone', '').strip() or None
+            restaurant.email = request.form.get('email', '').strip() or None
+            
+            # Update coordinates if provided
+            latitude = request.form.get('latitude', '').strip()
+            longitude = request.form.get('longitude', '').strip()
+            
+            if latitude and longitude:
+                try:
+                    restaurant.latitude = float(latitude)
+                    restaurant.longitude = float(longitude)
+                except ValueError:
+                    flash('Coordinate GPS non valide', 'warning')
+                    restaurant.latitude = None
+                    restaurant.longitude = None
+            else:
+                restaurant.latitude = None
+                restaurant.longitude = None
+            
+            # Validate required fields
+            if not restaurant.name:
+                flash('Il nome del ristorante è obbligatorio', 'error')
+                return render_template('restaurant_mapping/edit_restaurant.html', restaurant=restaurant)
+            
+            if not restaurant.restaurant_code:
+                flash('Il codice ristorante è obbligatorio', 'error')
+                return render_template('restaurant_mapping/edit_restaurant.html', restaurant=restaurant)
+            
+            # Check for duplicate restaurant code (excluding current restaurant)
+            existing = Restaurant.query.filter(
+                Restaurant.restaurant_code == restaurant.restaurant_code,
+                Restaurant.id != restaurant_id
+            ).first()
+            
+            if existing:
+                flash(f'Codice ristorante "{restaurant.restaurant_code}" già esistente', 'error')
+                return render_template('restaurant_mapping/edit_restaurant.html', restaurant=restaurant)
+            
+            db.session.commit()
+            flash('Ristorante aggiornato con successo!', 'success')
+            return redirect(url_for('restaurant_mapping.restaurant_detail', restaurant_id=restaurant_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Errore durante l\'aggiornamento: {str(e)}', 'error')
+    
+    return render_template('restaurant_mapping/edit_restaurant.html', restaurant=restaurant)
+
 @bp.route('/listings/save', methods=['POST'])
 @login_required
 def save_listing():

@@ -199,9 +199,8 @@
 {% block scripts %}
 <script>
 function editRestaurant(restaurantId) {
-    // For now, redirect to detail page
-    // In future versions, implement inline editing
-    window.location.href = `/restaurant-mapping/restaurants/${restaurantId}`;
+    // Redirect to edit page
+    window.location.href = `/restaurant-mapping/restaurants/${restaurantId}/edit`;
 }
 
 function toggleRestaurant(restaurantId, isActive) {
