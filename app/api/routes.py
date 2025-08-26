@@ -71,7 +71,7 @@ def create_product():
         # Create product
         product = Product(
             name=data['name'],
-            product_code=data.get('product_code', f"PROD_{current_user.id}_{db.session.query(Product).count() + 1}"),
+            product_code=data['product_code'],#data.get('product_code', f"PROD_{current_user.id}_{db.session.query(Product).count() + 1}"),
             product_type=data.get('product_type', 'product'),
             food_paper_cost_total=data.get('food_paper_cost_total', 0),
             created_by=current_user.id

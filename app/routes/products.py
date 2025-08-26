@@ -82,7 +82,7 @@ def create_sandwich():
             # Create product with new mandatory fields
             product = Product(
                 name=request.form['name'],
-                product_code=request.form.get('product_code_id', product_code),  # Use provided ID or generated one
+                product_code=request.form['product_code'],#request.form.get('product_code_id', product_code),  # Use provided ID or generated one
                 product_type='product',
                 food_paper_cost_total=float(request.form['food_paper_cost_total']),
                 created_by=current_user.id
@@ -151,7 +151,7 @@ def create_menu():
             from decimal import Decimal
             menu = Product(
                 name=request.form['name'],
-                product_code=request.form.get('product_code_id', product_code),
+                product_code=request.form['product_code'],#request.form.get('product_code_id', product_code),
                 product_type='menu',
                 base_product_id=int(request.form['base_product_id']) if request.form.get('base_product_id') else None,
                 fries_size=request.form.get('fries_size'),
