@@ -1,10 +1,32 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from app.routes import bp
-from app.models import Product, Ingredient, ProductIngredient
+from app.models import Product, Ingredient, ProductIngredient, ProductListing
 from app.auth.decorators import manager_required
 from app import db
 from sqlalchemy import or_
+from app.routes.restaurant_mapping import sync_product_to_all_restaurants
+
+def validate_product_code_uniqueness(product_code, exclude_product_id=None):
+    """Validate that a product code is unique (exact match only)"""
+    if not product_code or not product_code.strip():
+        return False, "Product code cannot be empty"
+    
+    # Check against existing ACTIVE products (exact match)
+    query = Product.query.filter(Product.product_code == product_code.strip(), Product.is_active == True)
+    if exclude_product_id:
+        query = query.filter(Product.id != exclude_product_id)
+    
+    existing_product = query.first()
+    if existing_product:
+        return False, f"Product code '{product_code}' already exists"
+    
+    # Check against ACTIVE ingredients (exact match)
+    existing_ingredient = Ingredient.query.filter(Ingredient.wrin_code == product_code.strip(), Ingredient.is_active == True).first()
+    if existing_ingredient:
+        return False, f"Product code '{product_code}' conflicts with ingredient WRIN code"
+    
+    return True, "Product code is valid"
 
 @bp.route('/products')
 @login_required
@@ -68,21 +90,24 @@ def create_sandwich():
     """Create a new sandwich"""
     if request.method == 'POST':
         try:
-            # Generate product code
-            product_count = Product.query.filter_by(created_by=current_user.id).count()
-            product_code = f"SW_{current_user.id}_{product_count + 1}"
-            
             # Validate required fields
-            required_fields = ['name', 'food_paper_cost_total']
+            required_fields = ['name', 'food_paper_cost_total', 'product_code']
             for field in required_fields:
                 if not request.form.get(field) or request.form.get(field).strip() == '':
                     flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
                     return redirect(request.url)
             
+            # Get and validate product code
+            product_code = request.form.get('product_code', '').strip()
+            is_valid, message = validate_product_code_uniqueness(product_code)
+            if not is_valid:
+                flash(message, 'error')
+                return redirect(request.url)
+            
             # Create product with new mandatory fields
             product = Product(
                 name=request.form['name'],
-                product_code=request.form['product_code'],#request.form.get('product_code_id', product_code),  # Use provided ID or generated one
+                product_code=product_code,
                 product_type='product',
                 food_paper_cost_total=float(request.form['food_paper_cost_total']),
                 created_by=current_user.id
@@ -108,7 +133,13 @@ def create_sandwich():
             
             db.session.commit()
             
-            flash(f'Product "{product.name}" created successfully!', 'success')
+            # Automatically sync product to all restaurants
+            try:
+                added_listings = sync_product_to_all_restaurants(product.id)
+                flash(f'Product "{product.name}" created successfully! Added to {added_listings} restaurant listings.', 'success')
+            except Exception as e:
+                flash(f'Product "{product.name}" created successfully, but sync failed: {str(e)}', 'warning')
+                
             return redirect(url_for('main.product_detail', id=product.id))
             
         except ValueError as e:
@@ -136,22 +167,25 @@ def create_menu():
     """Create a new menu"""
     if request.method == 'POST':
         try:
-            # Generate product code
-            product_count = Product.query.filter_by(created_by=current_user.id).count()
-            product_code = f"MN_{current_user.id}_{product_count + 1}"
-            
             # Validate required fields for menu
-            menu_required_fields = ['name']
+            menu_required_fields = ['name', 'product_code']
             for field in menu_required_fields:
                 if not request.form.get(field) or request.form.get(field).strip() == '':
                     flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
                     return redirect(request.url)
             
+            # Get and validate product code
+            product_code = request.form.get('product_code', '').strip()
+            is_valid, message = validate_product_code_uniqueness(product_code)
+            if not is_valid:
+                flash(message, 'error')
+                return redirect(request.url)
+            
             # Create menu product with new mandatory fields
             from decimal import Decimal
             menu = Product(
                 name=request.form['name'],
-                product_code=request.form['product_code'],#request.form.get('product_code_id', product_code),
+                product_code=product_code,
                 product_type='menu',
                 base_product_id=int(request.form['base_product_id']) if request.form.get('base_product_id') else None,
                 fries_size=request.form.get('fries_size'),
@@ -169,7 +203,13 @@ def create_menu():
             
             db.session.commit()
             
-            flash(f'Menu "{menu.name}" created successfully!', 'success')
+            # Automatically sync menu to all restaurants
+            try:
+                added_listings = sync_product_to_all_restaurants(menu.id)
+                flash(f'Menu "{menu.name}" created successfully! Added to {added_listings} restaurant listings.', 'success')
+            except Exception as e:
+                flash(f'Menu "{menu.name}" created successfully, but sync failed: {str(e)}', 'warning')
+                
             return redirect(url_for('main.product_detail', id=menu.id))
             
         except ValueError as e:
@@ -200,7 +240,24 @@ def edit_product(id):
     
     if request.method == 'POST':
         try:
+            # Validate required fields
+            required_fields = ['name', 'product_code']
+            for field in required_fields:
+                if not request.form.get(field) or request.form.get(field).strip() == '':
+                    flash(f'Il campo "{field.replace("_", " ").title()}" è obbligatorio.', 'error')
+                    return redirect(request.url)
+            
+            # Validate product code uniqueness (excluding current product)
+            new_product_code = request.form.get('product_code', '').strip()
+            if new_product_code != product.product_code:
+                is_valid, message = validate_product_code_uniqueness(new_product_code, exclude_product_id=product.id)
+                if not is_valid:
+                    flash(message, 'error')
+                    return redirect(request.url)
+            
+            # Update basic fields
             product.name = request.form['name']
+            product.product_code = new_product_code
 
             # Handle sandwich-specific updates
             if product.product_type == 'product':
@@ -265,7 +322,7 @@ def edit_product(id):
 @bp.route('/products/<int:id>', methods=['DELETE'])
 @login_required
 def delete_product(id):
-    """Soft delete a product"""
+    """Hard delete a product and all its dependencies"""
     product = Product.query.get_or_404(id)
     
     # Check permissions
@@ -276,9 +333,9 @@ def delete_product(id):
         return redirect(url_for('main.products'))
     
     try:
-        # Check if this product is used in any menus
+        # Check if this product is used in any active menus
         if product.product_type == 'product':
-            menus_using_product = Product.query.filter_by(base_product_id=product.id, is_active=True).count()
+            menus_using_product = Product.query.filter_by(base_product_id=product.id).count()
             if menus_using_product > 0:
                 error_msg = f'Impossibile eliminare "{product.name}" - è utilizzato in {menus_using_product} menu.'
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -286,8 +343,11 @@ def delete_product(id):
                 flash(error_msg, 'error')
                 return redirect(url_for('main.products'))
         
-        # Soft delete the product
-        product.is_active = False
+        # Hard delete: first remove from restaurant listings
+        ProductListing.query.filter_by(product_id=product.id).delete()
+        
+        # Then delete the product (ProductIngredients will cascade automatically)
+        db.session.delete(product)
         db.session.commit()
         
         success_msg = f'{product.product_type.title()} "{product.name}" eliminato con successo!'
@@ -414,14 +474,17 @@ def bulk_delete_products():
                 
                 # Check if product is used in menus
                 if product.product_type == 'product':
-                    menus_using_product = Product.query.filter_by(base_product_id=product.id, is_active=True).count()
+                    menus_using_product = Product.query.filter_by(base_product_id=product.id).count()
                     if menus_using_product > 0:
                         error_messages.append(f'Cannot delete "{product.name}" - used in {menus_using_product} menus')
                         skipped_count += 1
                         continue
                 
-                # Soft delete
-                product.is_active = False
+                # Hard delete: remove from restaurant listings first
+                ProductListing.query.filter_by(product_id=product.id).delete()
+                
+                # Then delete the product
+                db.session.delete(product)
                 deleted_count += 1
                 
             except ValueError:

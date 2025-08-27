@@ -7,6 +7,90 @@ from decimal import Decimal
 import json
 import csv
 import io
+import time
+
+def sync_product_to_all_restaurants(product_id, default_local_price=5.00, default_delivery_price=6.00):
+    """Add a product to all active restaurants if not already present"""
+    restaurants = Restaurant.query.filter_by(is_active=True).all()
+    added_count = 0
+    
+    for restaurant in restaurants:
+        # Check if listing already exists
+        existing = ProductListing.query.filter_by(
+            restaurant_id=restaurant.id,
+            product_id=product_id
+        ).first()
+        
+        if not existing:
+            # Create new listing with default prices
+            listing = ProductListing(
+                restaurant_id=restaurant.id,
+                product_id=product_id,
+                local_price=Decimal(str(default_local_price)),
+                delivery_price=Decimal(str(default_delivery_price)),
+                is_available=True
+            )
+            db.session.add(listing)
+            added_count += 1
+    
+    db.session.commit()
+    return added_count
+
+def sync_restaurant_to_all_products(restaurant_id, default_local_price=5.00, default_delivery_price=6.00):
+    """Add all active products to a restaurant if not already present"""
+    products = Product.query.filter_by(is_active=True).all()
+    added_count = 0
+    
+    for product in products:
+        # Check if listing already exists
+        existing = ProductListing.query.filter_by(
+            restaurant_id=restaurant_id,
+            product_id=product.id
+        ).first()
+        
+        if not existing:
+            # Create new listing with default prices
+            listing = ProductListing(
+                restaurant_id=restaurant_id,
+                product_id=product.id,
+                local_price=Decimal(str(default_local_price)),
+                delivery_price=Decimal(str(default_delivery_price)),
+                is_available=True
+            )
+            db.session.add(listing)
+            added_count += 1
+    
+    db.session.commit()
+    return added_count
+
+def sync_all_products_restaurants(default_local_price=5.00, default_delivery_price=6.00):
+    """Ensure all active products are in all active restaurants"""
+    products = Product.query.filter_by(is_active=True).all()
+    restaurants = Restaurant.query.filter_by(is_active=True).all()
+    added_count = 0
+    
+    for product in products:
+        for restaurant in restaurants:
+            # Check if listing already exists
+            existing = ProductListing.query.filter_by(
+                restaurant_id=restaurant.id,
+                product_id=product.id
+            ).first()
+            
+            if not existing:
+                # Create new listing with default prices
+                listing = ProductListing(
+                    restaurant_id=restaurant.id,
+                    product_id=product.id,
+                    local_price=Decimal(str(default_local_price)),
+                    delivery_price=Decimal(str(default_delivery_price)),
+                    is_available=True
+                )
+                db.session.add(listing)
+                added_count += 1
+    
+    db.session.commit()
+    return added_count
 
 bp = Blueprint('restaurant_mapping', __name__, url_prefix='/restaurant-mapping')
 
@@ -16,12 +100,27 @@ def index():
     """Restaurant mapping dashboard with map view and analytics"""
     restaurants = Restaurant.query.filter_by(is_active=True).all()
     
-    # Get basic statistics
+    # Auto-geocode restaurants without coordinates
+    geocoded_count = 0
+    for restaurant in restaurants:
+        if not restaurant.get_coordinates():
+            try:
+                if restaurant.ensure_coordinates(save=True):
+                    geocoded_count += 1
+                    time.sleep(1)  # Rate limiting for Nominatim API
+            except Exception as e:
+                print(f'Failed to geocode {restaurant.name}: {str(e)}')
+    
+    if geocoded_count > 0:
+        print(f'Auto-geocoded {geocoded_count} restaurants')
+    
+    # Get basic statistics (after potential geocoding)
     stats = {
         'total_restaurants': len(restaurants),
         'total_products_listed': db.session.query(func.count(ProductListing.id)).scalar() or 0,
         'restaurants_with_coords': len([r for r in restaurants if r.get_coordinates()]),
-        'avg_products_per_restaurant': 0
+        'avg_products_per_restaurant': 0,
+        'geocoded_this_session': geocoded_count
     }
     
     if stats['total_restaurants'] > 0:
@@ -103,7 +202,13 @@ def create_restaurant():
             db.session.add(restaurant)
             db.session.commit()
             
-            flash(f'Ristorante "{name}" creato con successo!', 'success')
+            # Automatically sync all products to new restaurant
+            try:
+                added_listings = sync_restaurant_to_all_products(restaurant.id)
+                flash(f'Ristorante "{name}" creato con successo! Aggiunti {added_listings} prodotti al listino.', 'success')
+            except Exception as e:
+                flash(f'Ristorante "{name}" creato con successo, ma sync fallita: {str(e)}', 'warning')
+                
             return redirect(url_for('restaurant_mapping.restaurants'))
             
         except Exception as e:
@@ -112,6 +217,22 @@ def create_restaurant():
             return render_template('restaurant_mapping/create_restaurant.html')
     
     return render_template('restaurant_mapping/create_restaurant.html')
+
+@bp.route('/admin/sync-all-listings', methods=['POST'])
+@login_required
+def sync_all_listings():
+    """Manual sync of all products to all restaurants - ADMIN ONLY"""
+    if not current_user.is_manager():
+        flash('Accesso negato. Solo i manager possono sincronizzare i listini.', 'error')
+        return redirect(url_for('restaurant_mapping.index'))
+    
+    try:
+        added_count = sync_all_products_restaurants()
+        flash(f'Sincronizzazione completata! Aggiunti {added_count} nuovi listings.', 'success')
+    except Exception as e:
+        flash(f'Errore durante la sincronizzazione: {str(e)}', 'error')
+    
+    return redirect(url_for('restaurant_mapping.index'))
 
 @bp.route('/restaurants/<int:restaurant_id>')
 @login_required
@@ -288,10 +409,8 @@ def price_comparison():
     # Get comparison data
     comparison_data = []
     for product in products:
-        # Calculate total F&P cost for this product
+        # Use the corrected F&P cost (already includes all components)
         total_fp_cost = float(product.food_paper_cost_total or 0)
-        if product.product_type == 'menu':
-            total_fp_cost += float(product.fries_fp_cost or 0) + float(product.drink_fp_cost or 0)
         
         listings_query = text("""
             SELECT r.id as restaurant_id, r.name as restaurant_name, r.city, 
@@ -304,17 +423,32 @@ def price_comparison():
         
         raw_listings = db.session.execute(listings_query, {'product_id': product.id}).fetchall()
         
-        # Add F&P cost to each listing
+        # Add F&P cost and calculate profits for each listing
         listings = []
         for listing in raw_listings:
+            local_price = float(listing.local_price)
+            delivery_price = float(listing.delivery_price)
+            
+            # Calculate profits
+            local_profit = local_price - total_fp_cost
+            delivery_profit = delivery_price - total_fp_cost
+            
+            # Calculate profit margins
+            local_margin = (local_profit / local_price * 100) if local_price > 0 else 0
+            delivery_margin = (delivery_profit / delivery_price * 100) if delivery_price > 0 else 0
+            
             listings.append({
                 'restaurant_id': listing.restaurant_id,
                 'restaurant_name': listing.restaurant_name,
                 'city': listing.city,
-                'local_price': float(listing.local_price),
-                'delivery_price': float(listing.delivery_price),
+                'local_price': local_price,
+                'delivery_price': delivery_price,
                 'is_available': listing.is_available,
-                'total_fp_cost': total_fp_cost
+                'total_fp_cost': total_fp_cost,
+                'local_profit': local_profit,
+                'delivery_profit': delivery_profit,
+                'local_margin': local_margin,
+                'delivery_margin': delivery_margin
             })
         
         if listings:
@@ -330,9 +464,21 @@ def price_comparison():
     # Get all restaurants for the filter dropdown
     restaurants = Restaurant.query.filter_by(is_active=True).order_by(Restaurant.name).all()
     
+    # Get unique restaurants that have listings (for chart filters)
+    unique_restaurants = {}
+    for item in comparison_data:
+        for listing in item['listings']:
+            unique_restaurants[listing['restaurant_id']] = {
+                'id': listing['restaurant_id'],
+                'name': listing['restaurant_name']
+            }
+    
+    chart_restaurants = list(unique_restaurants.values())
+    
     return render_template('restaurant_mapping/price_comparison.html',
                          comparison_data=comparison_data,
-                         restaurants=restaurants)
+                         restaurants=restaurants,
+                         chart_restaurants=chart_restaurants)
 
 @bp.route('/api/restaurants-geojson')
 @login_required

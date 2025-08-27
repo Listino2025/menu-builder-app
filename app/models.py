@@ -5,6 +5,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import JSON
+import requests
+import time
+from decimal import Decimal
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -208,6 +211,80 @@ class Restaurant(db.Model):
         if self.latitude and self.longitude:
             return (float(self.latitude), float(self.longitude))
         return None
+    
+    def geocode_address(self):
+        """Attempt to geocode the restaurant address using OpenStreetMap Nominatim"""
+        if self.latitude and self.longitude:
+            return True  # Already has coordinates
+            
+        if not self.address or not self.city:
+            return False  # Need address and city
+        
+        # Build search query
+        query_parts = [self.address, self.city]
+        if self.postal_code:
+            query_parts.append(self.postal_code)
+        
+        search_query = ', '.join(query_parts)
+        
+        try:
+            # Use OpenStreetMap Nominatim (free, no API key needed)
+            url = 'https://nominatim.openstreetmap.org/search'
+            params = {
+                'q': search_query,
+                'format': 'json',
+                'limit': 1,
+                'countrycodes': 'it',  # Limit to Italy
+                'addressdetails': 1
+            }
+            
+            headers = {
+                'User-Agent': 'MenuBuilderApp/1.0 (restaurant geocoding)'
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if data and len(data) > 0:
+                result = data[0]
+                lat = Decimal(str(result['lat']))
+                lon = Decimal(str(result['lon']))
+                
+                # Update coordinates
+                self.latitude = lat
+                self.longitude = lon
+                
+                print(f'Geocoded "{self.name}": {lat}, {lon}')
+                return True
+            else:
+                print(f'No geocoding results for "{self.name}" with address: {search_query}')
+                return False
+                
+        except requests.RequestException as e:
+            print(f'Geocoding failed for "{self.name}": {str(e)}')
+            return False
+        except Exception as e:
+            print(f'Geocoding error for "{self.name}": {str(e)}')
+            return False
+    
+    def ensure_coordinates(self, save=True):
+        """Ensure restaurant has coordinates, geocoding if necessary"""
+        if self.get_coordinates():
+            return True  # Already has coordinates
+        
+        success = self.geocode_address()
+        
+        if success and save:
+            try:
+                db.session.commit()
+            except Exception as e:
+                print(f'Failed to save geocoded coordinates for "{self.name}": {str(e)}')
+                db.session.rollback()
+                return False
+                
+        return success
     
     def is_open_now(self):
         """Check if restaurant is currently open (basic implementation)"""

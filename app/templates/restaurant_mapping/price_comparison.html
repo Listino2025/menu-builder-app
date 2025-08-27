@@ -74,8 +74,66 @@
         </div>
     </div>
 
-    <!-- Comparison Results -->
+    <!-- Charts Section -->
     {% if comparison_data %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-graph-up me-2"></i>Analisi Gross Profit
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <button id="toggle-charts-btn" class="btn btn-outline-secondary btn-sm" onclick="toggleCharts()">
+                                <i class="bi bi-eye me-1"></i>Mostra Grafici
+                            </button>
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="chart-type" id="chart-onsite" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary btn-sm" for="chart-onsite">On Site</label>
+                                <input type="radio" class="btn-check" name="chart-type" id="chart-delivery" autocomplete="off">
+                                <label class="btn btn-outline-info btn-sm" for="chart-delivery">Delivery</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body" id="charts-container" style="display: none;">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Seleziona Ristoranti per il Grafico:</label>
+                            <div class="d-flex flex-wrap gap-2" id="restaurant-chart-filters">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="selectAllRestaurants()">Tutti</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="clearAllRestaurants()">Nessuno</button>
+                                {% set processed_restaurants = [] %}
+                                {% for item in comparison_data %}
+                                    {% for listing in item.listings %}
+                                        {% if listing.restaurant_id not in processed_restaurants %}
+                                            {% set _ = processed_restaurants.append(listing.restaurant_id) %}
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input restaurant-chart-filter" type="checkbox" 
+                                                       id="chart-restaurant-{{ listing.restaurant_id }}" 
+                                                       value="{{ listing.restaurant_id }}" checked>
+                                                <label class="form-check-label" for="chart-restaurant-{{ listing.restaurant_id }}">
+                                                    {{ listing.restaurant_name }}
+                                                </label>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <canvas id="profit-chart" width="400" height="100"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comparison Results -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -86,14 +144,24 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="comparison-table">
-                            <thead class="table-light">
+                        <table class="table table-hover table-striped mb-0" id="comparison-table">
+                            <thead class="table-dark">
                                 <tr>
-                                    <th style="width: 25%">Prodotto</th>
-                                    <th style="width: 12%">Categoria</th>
-                                    <th style="width: 10%">F&P Cost</th>
-                                    <th style="width: 30%">Prezzi per Ristorante</th>
-                                    <th style="width: 23%">Gross Profit per Ristorante</th>
+                                    <th style="width: 25%">
+                                        <i class="bi bi-box-seam me-2"></i>Prodotto
+                                    </th>
+                                    <th style="width: 12%">
+                                        <i class="bi bi-tags me-2"></i>Categoria
+                                    </th>
+                                    <th style="width: 10%">
+                                        <i class="bi bi-cash-stack me-2"></i>F&P Cost
+                                    </th>
+                                    <th style="width: 30%">
+                                        <i class="bi bi-currency-euro me-2"></i>Prezzi per Ristorante
+                                    </th>
+                                    <th style="width: 23%">
+                                        <i class="bi bi-graph-up me-2"></i>Gross Profit
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -117,17 +185,13 @@
                                         </span>
                                     </td>
                                     <td>
-                                        {% if item.product.product_type == 'menu' %}
-                                            {% set total_fp_cost = (item.product.food_paper_cost_total or 0) + (item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0) %}
-                                            <strong class="text-danger">€{{ "%.3f"|format(total_fp_cost) }}</strong>
+                                        <strong class="text-danger">€{{ "%.3f"|format(item.product.food_paper_cost_total or 0) }}</strong>
+                                        {% if item.product.product_type == 'menu' and item.product.base_product %}
                                             <br><small class="text-muted">
-                                                Base: €{{ "%.2f"|format(item.product.food_paper_cost_total or 0) }}
-                                                {% if item.product.fries_fp_cost or item.product.drink_fp_cost %}
-                                                <br>+€{{ "%.2f"|format((item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0)) }}
-                                                {% endif %}
+                                                Base: €{{ "%.3f"|format(item.product.base_product.food_paper_cost_total or 0) }}
+                                                {% if item.product.fries_fp_cost %} + Patatine: €{{ "%.3f"|format(item.product.fries_fp_cost) }}{% endif %}
+                                                {% if item.product.drink_fp_cost %} + Bibita: €{{ "%.3f"|format(item.product.drink_fp_cost) }}{% endif %}
                                             </small>
-                                        {% else %}
-                                            <strong class="text-danger">€{{ "%.3f"|format(item.product.food_paper_cost_total or 0) }}</strong>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -161,25 +225,23 @@
                                                 <div class="row">
                                                     <div class="col-6">
                                                         <div class="text-center">
-                                                            {% set local_profit = listing.local_price - listing.total_fp_cost %}
-                                                            <div class="fw-bold {{ 'text-success' if local_profit >= 0 else 'text-danger' }}">
-                                                                €{{ "%.2f"|format(local_profit) }}
+                                                            <div class="fw-bold {{ 'text-success' if listing.local_profit >= 0 else 'text-danger' }}">
+                                                                €{{ "%.2f"|format(listing.local_profit) }}
                                                             </div>
                                                             <small class="text-muted">On Site</small>
-                                                            <br><small class="{{ 'text-success' if local_profit >= 0 else 'text-danger' }}">
-                                                                {{ "%.1f"|format((local_profit / listing.local_price * 100) if listing.local_price > 0 else 0) }}%
+                                                            <br><small class="{{ 'text-success' if listing.local_profit >= 0 else 'text-danger' }}">
+                                                                {{ "%.1f"|format(listing.local_margin) }}%
                                                             </small>
                                                         </div>
                                                     </div>
                                                     <div class="col-6">
                                                         <div class="text-center">
-                                                            {% set delivery_profit = listing.delivery_price - listing.total_fp_cost %}
-                                                            <div class="fw-bold {{ 'text-success' if delivery_profit >= 0 else 'text-danger' }}">
-                                                                €{{ "%.2f"|format(delivery_profit) }}
+                                                            <div class="fw-bold {{ 'text-success' if listing.delivery_profit >= 0 else 'text-danger' }}">
+                                                                €{{ "%.2f"|format(listing.delivery_profit) }}
                                                             </div>
                                                             <small class="text-muted">Delivery</small>
-                                                            <br><small class="{{ 'text-success' if delivery_profit >= 0 else 'text-danger' }}">
-                                                                {{ "%.1f"|format((delivery_profit / listing.delivery_price * 100) if listing.delivery_price > 0 else 0) }}%
+                                                            <br><small class="{{ 'text-success' if listing.delivery_profit >= 0 else 'text-danger' }}">
+                                                                {{ "%.1f"|format(listing.delivery_margin) }}%
                                                             </small>
                                                         </div>
                                                     </div>
@@ -198,49 +260,6 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="row mt-4">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-bar-chart me-2"></i>Gross Profit per Ristorante (On Site)
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="grossProfitOnSiteChart" height="300"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-bar-chart me-2"></i>Gross Profit per Ristorante (Delivery)
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="grossProfitDeliveryChart" height="300"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Profit Comparison Chart -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-graph-up me-2"></i>Confronto Margini di Profitto
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="profitComparisonChart" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
 
     {% else %}
     <!-- Empty State -->
@@ -270,21 +289,279 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.comparison-row:hover {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.profit-positive {
+    background: linear-gradient(90deg, rgba(25, 135, 84, 0.1) 0%, transparent 100%);
+}
+
+.profit-negative {
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0.1) 0%, transparent 100%);
+}
+
+.restaurant-prices .price-item {
+    border-left: 3px solid #007bff;
+    transition: all 0.3s ease;
+}
+
+.restaurant-prices .price-item:hover {
+    border-left-color: #0056b3;
+    transform: translateX(2px);
+}
+
+.profit-item {
+    transition: all 0.2s ease;
+    border-radius: 8px !important;
+}
+
+.profit-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#comparison-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.table-dark th {
+    background-color: #212529 !important;
+    color: #fff !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+</style>
+
 <script>
 let originalData = [];
-let charts = {};
+let profitChart = null;
+let chartsVisible = false;
+
+
+// Extract data from template for charts
+const comparisonData = [
+    {% for item in comparison_data %}
+    {
+        productName: "{{ item.product.name|e }}",
+        productType: "{{ item.product.product_type }}",
+        fpCost: {{ item.product.food_paper_cost_total or 0 }},
+        listings: [
+            {% for listing in item.listings %}
+            {
+                restaurantId: {{ listing.restaurant_id }},
+                restaurantName: "{{ listing.restaurant_name|e }}",
+                localPrice: {{ listing.local_price }},
+                deliveryPrice: {{ listing.delivery_price }},
+                localProfit: {{ listing.local_profit }},
+                deliveryProfit: {{ listing.delivery_profit }},
+                localMargin: {{ listing.local_margin }},
+                deliveryMargin: {{ listing.delivery_margin }},
+                isAvailable: {{ 'true' if listing.is_available else 'false' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Toggle charts visibility
+function toggleCharts() {
+    const container = document.getElementById('charts-container');
+    const btn = document.getElementById('toggle-charts-btn');
+    
+    if (chartsVisible) {
+        container.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-eye me-1"></i>Mostra Grafici';
+        chartsVisible = false;
+    } else {
+        container.style.display = 'block';
+        btn.innerHTML = '<i class="bi bi-eye-slash me-1"></i>Nascondi Grafici';
+        chartsVisible = true;
+        updateChart();
+    }
+}
+
+// Update chart based on selected filters
+function updateChart() {
+    if (!profitChart || !chartsVisible) return;
+    
+    const chartType = document.querySelector('input[name="chart-type"]:checked').id;
+    const isDelivery = chartType === 'chart-delivery';
+    
+    const selectedRestaurants = Array.from(document.querySelectorAll('.restaurant-chart-filter:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedRestaurants.length === 0) return;
+    
+    const chartData = [];
+    const chartLabels = [];
+    
+    comparisonData.forEach(item => {
+        const filteredListings = item.listings.filter(listing => 
+            selectedRestaurants.includes(listing.restaurantId) && listing.isAvailable
+        );
+        
+        if (filteredListings.length > 0) {
+            const avgProfit = filteredListings.reduce((sum, listing) => 
+                sum + (isDelivery ? listing.deliveryProfit : listing.localProfit), 0
+            ) / filteredListings.length;
+            
+            chartData.push(avgProfit);
+            chartLabels.push(item.productName);
+        }
+    });
+    
+    profitChart.data.labels = chartLabels;
+    profitChart.data.datasets[0].data = chartData;
+    profitChart.data.datasets[0].label = isDelivery ? 'Gross Profit Delivery (€)' : 'Gross Profit On Site (€)';
+    profitChart.data.datasets[0].backgroundColor = isDelivery ? 
+        'rgba(23, 162, 184, 0.6)' : 'rgba(54, 162, 235, 0.6)';
+    profitChart.data.datasets[0].borderColor = isDelivery ? 
+        'rgba(23, 162, 184, 1)' : 'rgba(54, 162, 235, 1)';
+    
+    profitChart.update();
+}
+
+// Restaurant selection functions
+function selectAllRestaurants() {
+    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
+        cb.checked = true;
+    });
+    updateChart();
+}
+
+function clearAllRestaurants() {
+    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
+        cb.checked = false;
+    });
+    updateChart();
+}
+
+// Table filtering function
+function filterTable() {
+    const productFilter = document.getElementById('product-filter').value.toLowerCase();
+    const restaurantFilter = Array.from(document.getElementById('restaurant-filter').selectedOptions).map(opt => opt.value);
+    const categoryFilter = document.getElementById('category-filter').value.toLowerCase();
+    
+    document.querySelectorAll('.comparison-row').forEach(row => {
+        const productName = row.dataset.productName || '';
+        const productCategory = row.dataset.productCategory || '';
+        
+        const nameMatch = !productFilter || productName.includes(productFilter);
+        const categoryMatch = !categoryFilter || productCategory.includes(categoryFilter);
+        const restaurantMatch = restaurantFilter.length === 0;
+        
+        if (nameMatch && categoryMatch && restaurantMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Store original data for filtering
+    initializeChart();
+    setupEventListeners();
+    applyRowStyles()
+});
+
+// Initialize the profit chart
+function initializeChart() {
+    const ctx = document.getElementById('profit-chart').getContext('2d');
+    
+    profitChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Gross Profit (€)',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Gross Profit (€)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Prodotti'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Gross Profit: €${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Chart type radio buttons
+    document.querySelectorAll('input[name="chart-type"]').forEach(radio => {
+        radio.addEventListener('change', updateChart);
+    });
+    
+    // Restaurant filters
+    document.querySelectorAll('.restaurant-chart-filter').forEach(checkbox => {
+        checkbox.addEventListener('change', updateChart);
+    });
+    
+    // Table filters
+    document.getElementById('product-filter').addEventListener('input', filterTable);
+    document.getElementById('restaurant-filter').addEventListener('change', filterTable);
+    document.getElementById('category-filter').addEventListener('change', filterTable);
+    document.getElementById('sort-filter').addEventListener('change', filterTable);
+}
+
+// Apply visual enhancements to table rows
+function applyRowStyles() {
     const rows = document.querySelectorAll('.comparison-row');
     rows.forEach(row => {
+        // Apply profit-based styling
+        const profitItems = row.querySelectorAll('.profit-item');
+        profitItems.forEach(item => {
+            const profitValue = parseFloat(item.querySelector('.fw-bold').textContent.replace(/[€,]/g, ''));
+            if (profitValue > 0) {
+                item.classList.add('profit-positive');
+            } else if (profitValue < 0) {
+                item.classList.add('profit-negative');
+            }
+        });
+        
+        // Store row data for filtering
         originalData.push({
             element: row,
             name: row.dataset.productName,
             category: row.dataset.productCategory,
-            minPrice: parseFloat(row.dataset.minPrice),
-            maxPrice: parseFloat(row.dataset.maxPrice),
-            priceRange: parseFloat(row.dataset.priceRange),
             restaurants: row.dataset.restaurants.split(',').map(id => parseInt(id))
         });
     });
@@ -298,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('restaurant-filter').addEventListener('change', applyFilters);
     document.getElementById('category-filter').addEventListener('change', applyFilters);
     document.getElementById('sort-filter').addEventListener('change', applyFilters);
-});
+};
 
 function applyFilters() {
     const productFilter = document.getElementById('product-filter').value.toLowerCase();

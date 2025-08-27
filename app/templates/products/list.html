@@ -50,99 +50,28 @@
         <div class="col-lg-2 mb-3">
             <select class="form-select" id="type-filter" data-filter="products">
                 <option value="">Tutti i tipi</option>
-                <option value="sandwich">Panini</option>
+                <option value="product">Prodotti</option>
                 <option value="menu">Menu</option>
             </select>
         </div>
-        <div class="col-lg-2 mb-3">
-            <select class="form-select" id="status-filter" data-filter="products">
-                <option value="">Tutti gli stati</option>
-                <option value="active">Attivi</option>
-                <option value="inactive">Inattivi</option>
-            </select>
-        </div>
-        <div class="col-lg-2 mb-3">
+        <div class="col-lg-3 mb-3">
             <select class="form-select" id="sort-filter">
                 <option value="name">Nome A-Z</option>
                 <option value="name_desc">Nome Z-A</option>
                 <option value="cost">Costo crescente</option>
                 <option value="cost_desc">Costo decrescente</option>
-                <option value="profit">Profitto crescente</option>
-                <option value="profit_desc">Profitto decrescente</option>
                 <option value="created">Più recenti</option>
                 <option value="created_desc">Più vecchi</option>
             </select>
         </div>
-        <div class="col-lg-2 mb-3">
+        <div class="col-lg-3 mb-3">
             <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
                 <i class="bi bi-x-circle me-1"></i>Reset
             </button>
         </div>
     </div>
     
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-white-50 mb-1">Totale Prodotti</h6>
-                            <h3 class="mb-0">{{ stats.total_products if stats else (products.total if products else 0) }}</h3>
-                        </div>
-                        <div class="text-white-50">
-                            <i class="bi bi-collection display-6"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-white-50 mb-1">Prodotti Attivi</h6>
-                            <h3 class="mb-0">{{ stats.active_products if stats else (products.items|selectattr('is_active')|list|length if products else 0) }}</h3>
-                        </div>
-                        <div class="text-white-50">
-                            <i class="bi bi-check-circle display-6"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-white-50 mb-1">Costo Medio</h6>
-                            <h3 class="mb-0">€{{ "%.2f"|format(stats.average_cost if stats else 0) }}</h3>
-                        </div>
-                        <div class="text-white-50">
-                            <i class="bi bi-calculator display-6"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title text-white-50 mb-1">Margine Medio</h6>
-                            <h3 class="mb-0">{{ "%.1f"|format(stats.average_margin if stats else 0) }}%</h3>
-                        </div>
-                        <div class="text-white-50">
-                            <i class="bi bi-percent display-6"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    
     
     <!-- Products Table -->
     <div class="row">
@@ -169,10 +98,7 @@
                                     <th>Prodotto</th>
                                     <th>Tipo</th>
                                     <th>Ingredienti</th>
-                                    <th>Costo</th>
-                                    <th>Prezzo</th>
-                                    <th>Profitto</th>
-                                    <th>Stato</th>
+                                    <th>Costo F&P</th>
                                     <th>Creato</th>
                                     <th>Azioni</th>
                                 </tr>
@@ -185,7 +111,7 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="product-icon me-2">
-                                                <i class="bi bi-{{ 'burger' if product.product_type == 'sandwich' else 'collection' }} text-primary"></i>
+                                                <i class="bi bi-{{ 'burger' if product.product_type == 'product' else 'collection' }} text-primary"></i>
                                             </div>
                                             <div>
                                                 <div class="fw-medium">
@@ -200,28 +126,33 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ 'primary' if product.product_type == 'sandwich' else 'success' }}">
-                                            {{ product.product_type.title() }}
+                                        <span class="badge bg-{{ 'primary' if product.product_type == 'product' else 'success' }}">
+                                            {{ 'Prodotto' if product.product_type == 'product' else 'Menu' }}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark">
-                                            {{ product.ingredients.count() }}
-                                        </span>
+                                        {% if product.product_type == 'product' %}
+                                            <span class="badge bg-light text-dark">
+                                                {{ product.ingredients.count() }}
+                                            </span>
+                                        {% elif product.product_type == 'menu' and product.base_product %}
+                                            <span class="badge bg-light text-dark">
+                                                {{ product.base_product.ingredients.count() }}
+                                            </span>
+                                            <small class="text-muted d-block">Prodotto Base: {{ product.base_product.name }}</small>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">0</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <div class="fw-medium">€{{ "%.3f"|format(product.food_paper_cost_total or 0) }}</div>
-                                    </td>
-                                    <td>
-                                        <span class="text-muted">Set in restaurant listings</span>
-                                    </td>
-                                    <td>
-                                        <span class="text-muted">-</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ 'success' if product.is_active else 'secondary' }}">
-                                            {{ 'Attivo' if product.is_active else 'Inattivo' }}
-                                        </span>
+                                        {% if product.product_type == 'menu' %}
+                                            <small class="text-muted d-block">
+                                                Base: €{{ "%.3f"|format(product.base_product.food_paper_cost_total if product.base_product else 0) }}
+                                                {% if product.fries_fp_cost %} + Patatine: €{{ "%.3f"|format(product.fries_fp_cost) }}{% endif %}
+                                                {% if product.drink_fp_cost %} + Bibita: €{{ "%.3f"|format(product.drink_fp_cost) }}{% endif %}
+                                            </small>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <small class="text-muted">
