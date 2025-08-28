@@ -74,62 +74,108 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
+    <!-- Grouped Bar Chart Section -->
     {% if comparison_data %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-graph-up me-2"></i>Analisi Gross Profit
-                        </h5>
-                        <div class="d-flex gap-2">
-                            <button id="toggle-charts-btn" class="btn btn-outline-secondary btn-sm" onclick="toggleCharts()">
-                                <i class="bi bi-eye me-1"></i>Mostra Grafici
-                            </button>
-                            <div class="btn-group" role="group">
-                                <input type="radio" class="btn-check" name="chart-type" id="chart-onsite" autocomplete="off" checked>
-                                <label class="btn btn-outline-primary btn-sm" for="chart-onsite">On Site</label>
-                                <input type="radio" class="btn-check" name="chart-type" id="chart-delivery" autocomplete="off">
-                                <label class="btn btn-outline-info btn-sm" for="chart-delivery">Delivery</label>
-                            </div>
-                        </div>
+    <div class="card mb-4" id="charts-section" style="display: none;">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart me-2"></i>Analisi Profitti per Prodotto e Ristorante
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleCharts()">
+                    <i class="bi bi-eye" id="charts-toggle-icon"></i>
+                    <span id="charts-toggle-text">Mostra Grafici</span>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            
+            <!-- Chart Controls -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Scenario di Profitto:</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="profit-type" id="profit-onsite" value="onsite" checked>
+                        <label class="btn btn-outline-primary" for="profit-onsite">
+                            <i class="bi bi-shop me-1"></i>On Site
+                        </label>
+                        <input type="radio" class="btn-check" name="profit-type" id="profit-delivery" value="delivery">
+                        <label class="btn btn-outline-info" for="profit-delivery">
+                            <i class="bi bi-truck me-1"></i>Delivery
+                        </label>
                     </div>
                 </div>
-                <div class="card-body" id="charts-container" style="display: none;">
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Seleziona Ristoranti per il Grafico:</label>
-                            <div class="d-flex flex-wrap gap-2" id="restaurant-chart-filters">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="selectAllRestaurants()">Tutti</button>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="clearAllRestaurants()">Nessuno</button>
-                                {% set processed_restaurants = [] %}
-                                {% for item in comparison_data %}
-                                    {% for listing in item.listings %}
-                                        {% if listing.restaurant_id not in processed_restaurants %}
-                                            {% set _ = processed_restaurants.append(listing.restaurant_id) %}
-                                            <div class="form-check form-check-inline">
-                                                <input class="form-check-input restaurant-chart-filter" type="checkbox" 
-                                                       id="chart-restaurant-{{ listing.restaurant_id }}" 
-                                                       value="{{ listing.restaurant_id }}" checked>
-                                                <label class="form-check-label" for="chart-restaurant-{{ listing.restaurant_id }}">
-                                                    {{ listing.restaurant_name }}
-                                                </label>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endfor %}
-                            </div>
-                        </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Selezione Ristoranti:</label>
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllRestaurantsForChart()">
+                            <i class="bi bi-check-all me-1"></i>Tutti
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="clearAllRestaurantsForChart()">
+                            <i class="bi bi-x-circle me-1"></i>Nessuno
+                        </button>
                     </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <canvas id="profit-chart" width="400" height="100"></canvas>
-                        </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ordinamento:</label>
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sortChartByProfit()">
+                            <i class="bi bi-sort-numeric-down me-1"></i>Per Profitto
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sortChartByName()">
+                            <i class="bi bi-sort-alpha-down me-1"></i>Per Nome
+                        </button>
                     </div>
                 </div>
             </div>
+            
+            <!-- Restaurant Selection -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold">Ristoranti da Visualizzare:</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% set processed_restaurants = [] %}
+                        {% for item in comparison_data %}
+                            {% for listing in item.listings %}
+                                {% if listing.restaurant_id not in processed_restaurants %}
+                                    {% set _ = processed_restaurants.append(listing.restaurant_id) %}
+                                    <div class="form-check">
+                                        <input class="form-check-input restaurant-chart-filter" 
+                                               type="checkbox" 
+                                               value="{{ listing.restaurant_id }}" 
+                                               id="chart-restaurant-{{ listing.restaurant_id }}" 
+                                               checked>
+                                        <label class="form-check-label" for="chart-restaurant-{{ listing.restaurant_id }}">
+                                            <small>{{ listing.restaurant_name }}</small>
+                                        </label>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chart Canvas -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="chart-container" style="position: relative; height: 400px; margin-top: 20px;">
+                        <canvas id="profit-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chart Actions -->
+            <div class="row mt-3">
+                <div class="col-12 text-end">
+                    <button class="btn btn-sm btn-outline-info" onclick="exportChartData()">
+                        <i class="bi bi-download me-1"></i>Esporta Dati Grafico
+                    </button>
+                </div>
+            </div>
+            
         </div>
     </div>
     
@@ -138,9 +184,15 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-table me-2"></i>Confronto Prezzi ({{ comparison_data|length }} prodotti)
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-table me-2"></i>Confronto Prezzi ({{ comparison_data|length }} prodotti)
+                        </h5>
+                        <button class="btn btn-primary btn-sm" onclick="toggleCharts()">
+                            <i class="bi bi-bar-chart me-1"></i>
+                            <span id="main-charts-toggle-text">Mostra Grafici Interattivi</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -289,6 +341,9 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 .comparison-row:hover {
     background-color: rgba(13, 110, 253, 0.1) !important;
@@ -337,9 +392,45 @@
 </style>
 
 <script>
-let originalData = [];
-let profitChart = null;
+// ===== ESSENTIAL FUNCTIONS FIRST =====
+
+// Charts visibility state
 let chartsVisible = false;
+let groupedProfitChart = null;
+let profitChart = null; // Prevent old system from initializing
+
+// CRITICAL: Define toggleCharts at the very beginning
+function toggleCharts() {
+    const chartsSection = document.getElementById('charts-section');
+    const toggleIcon = document.getElementById('charts-toggle-icon');
+    const toggleText = document.getElementById('charts-toggle-text');
+    const mainToggleText = document.getElementById('main-charts-toggle-text');
+    
+    if (chartsVisible) {
+        chartsSection.style.display = 'none';
+        if (toggleIcon) toggleIcon.className = 'bi bi-eye';
+        if (toggleText) toggleText.textContent = 'Mostra Grafici';
+        if (mainToggleText) mainToggleText.textContent = 'Mostra Grafici Interattivi';
+        chartsVisible = false;
+    } else {
+        chartsSection.style.display = 'block';
+        if (toggleIcon) toggleIcon.className = 'bi bi-eye-slash';
+        if (toggleText) toggleText.textContent = 'Nascondi Grafici';
+        if (mainToggleText) mainToggleText.textContent = 'Nascondi Grafici Interattivi';
+        chartsVisible = true;
+        
+        // Scroll to charts section
+        chartsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Initialize chart if not already done
+        if (!groupedProfitChart) {
+            setTimeout(() => {
+                initializeGroupedBarChart();
+                toggleChartScenario();
+            }, 100);
+        }
+    }
+}
 
 
 // Extract data from template for charts
@@ -368,78 +459,11 @@ const comparisonData = [
     {% endfor %}
 ];
 
-// Toggle charts visibility
-function toggleCharts() {
-    const container = document.getElementById('charts-container');
-    const btn = document.getElementById('toggle-charts-btn');
-    
-    if (chartsVisible) {
-        container.style.display = 'none';
-        btn.innerHTML = '<i class="bi bi-eye me-1"></i>Mostra Grafici';
-        chartsVisible = false;
-    } else {
-        container.style.display = 'block';
-        btn.innerHTML = '<i class="bi bi-eye-slash me-1"></i>Nascondi Grafici';
-        chartsVisible = true;
-        updateChart();
-    }
-}
+// Old toggleCharts removed - using new grouped bar chart system
 
-// Update chart based on selected filters
-function updateChart() {
-    if (!profitChart || !chartsVisible) return;
-    
-    const chartType = document.querySelector('input[name="chart-type"]:checked').id;
-    const isDelivery = chartType === 'chart-delivery';
-    
-    const selectedRestaurants = Array.from(document.querySelectorAll('.restaurant-chart-filter:checked'))
-        .map(cb => parseInt(cb.value));
-    
-    if (selectedRestaurants.length === 0) return;
-    
-    const chartData = [];
-    const chartLabels = [];
-    
-    comparisonData.forEach(item => {
-        const filteredListings = item.listings.filter(listing => 
-            selectedRestaurants.includes(listing.restaurantId) && listing.isAvailable
-        );
-        
-        if (filteredListings.length > 0) {
-            const avgProfit = filteredListings.reduce((sum, listing) => 
-                sum + (isDelivery ? listing.deliveryProfit : listing.localProfit), 0
-            ) / filteredListings.length;
-            
-            chartData.push(avgProfit);
-            chartLabels.push(item.productName);
-        }
-    });
-    
-    profitChart.data.labels = chartLabels;
-    profitChart.data.datasets[0].data = chartData;
-    profitChart.data.datasets[0].label = isDelivery ? 'Gross Profit Delivery (€)' : 'Gross Profit On Site (€)';
-    profitChart.data.datasets[0].backgroundColor = isDelivery ? 
-        'rgba(23, 162, 184, 0.6)' : 'rgba(54, 162, 235, 0.6)';
-    profitChart.data.datasets[0].borderColor = isDelivery ? 
-        'rgba(23, 162, 184, 1)' : 'rgba(54, 162, 235, 1)';
-    
-    profitChart.update();
-}
+// Old updateChart function removed - using new grouped bar chart system
 
-// Restaurant selection functions
-function selectAllRestaurants() {
-    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
-        cb.checked = true;
-    });
-    updateChart();
-}
-
-function clearAllRestaurants() {
-    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
-        cb.checked = false;
-    });
-    updateChart();
-}
+// Old restaurant selection functions removed - using new grouped bar chart system
 
 // Table filtering function
 function filterTable() {
@@ -464,78 +488,18 @@ function filterTable() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeChart();
+    // Old chart system removed
     setupEventListeners();
     applyRowStyles()
 });
 
-// Initialize the profit chart
-function initializeChart() {
-    const ctx = document.getElementById('profit-chart').getContext('2d');
-    
-    profitChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Gross Profit (€)',
-                data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Gross Profit (€)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Prodotti'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `Gross Profit: €${context.parsed.y.toFixed(2)}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
+// Old initializeChart function removed - using new grouped bar chart system
 
 // Setup event listeners
 function setupEventListeners() {
-    // Chart type radio buttons
-    document.querySelectorAll('input[name="chart-type"]').forEach(radio => {
-        radio.addEventListener('change', updateChart);
-    });
+    // Old chart event listeners removed - using new grouped bar chart system
     
-    // Restaurant filters
-    document.querySelectorAll('.restaurant-chart-filter').forEach(checkbox => {
-        checkbox.addEventListener('change', updateChart);
-    });
-    
-    // Table filters
+    // Table filters only
     document.getElementById('product-filter').addEventListener('input', filterTable);
     document.getElementById('restaurant-filter').addEventListener('change', filterTable);
     document.getElementById('category-filter').addEventListener('change', filterTable);
@@ -556,132 +520,17 @@ function applyRowStyles() {
                 item.classList.add('profit-negative');
             }
         });
-        
-        // Store row data for filtering
-        originalData.push({
-            element: row,
-            name: row.dataset.productName,
-            category: row.dataset.productCategory,
-            restaurants: row.dataset.restaurants.split(',').map(id => parseInt(id))
-        });
     });
-    
-    calculateSummaryStats();
-    initializeCharts();
-    updateCharts(originalData);
-    
-    // Set up real-time filtering
-    document.getElementById('product-filter').addEventListener('input', applyFilters);
-    document.getElementById('restaurant-filter').addEventListener('change', applyFilters);
-    document.getElementById('category-filter').addEventListener('change', applyFilters);
-    document.getElementById('sort-filter').addEventListener('change', applyFilters);
-};
-
-function applyFilters() {
-    const productFilter = document.getElementById('product-filter').value.toLowerCase();
-    const restaurantFilter = Array.from(document.getElementById('restaurant-filter').selectedOptions).map(opt => parseInt(opt.value));
-    const categoryFilter = document.getElementById('category-filter').value.toLowerCase();
-    const sortBy = document.getElementById('sort-filter').value;
-    
-    // Filter data
-    let filteredData = originalData.filter(item => {
-        const nameMatch = !productFilter || item.name.includes(productFilter);
-        const categoryMatch = !categoryFilter || item.category === categoryFilter;
-        const restaurantMatch = restaurantFilter.length === 0 || item.restaurants.some(rid => restaurantFilter.includes(rid));
-        return nameMatch && categoryMatch && restaurantMatch;
-    });
-    
-    // Sort data
-    filteredData.sort((a, b) => {
-        switch(sortBy) {
-            case 'name':
-                return a.name.localeCompare(b.name);
-            case 'min_price':
-                return a.minPrice - b.minPrice;
-            case 'max_price':
-                return b.maxPrice - a.maxPrice;
-            case 'price_range':
-                return b.priceRange - a.priceRange;
-            default:
-                return 0;
-        }
-    });
-    
-    // Update table
-    const tbody = document.querySelector('#comparison-table tbody');
-    tbody.innerHTML = '';
-    
-    filteredData.forEach(item => {
-        tbody.appendChild(item.element);
-    });
-    
-    // Update stats and charts
-    calculateSummaryStats(filteredData);
-    updateCharts(filteredData);
 }
 
-function calculateSummaryStats(data = originalData) {
-    if (data.length === 0) return;
-    
-    const totalProducts = data.length;
-    const avgMinPrice = data.reduce((sum, item) => sum + item.minPrice, 0) / totalProducts;
-    const avgMaxPrice = data.reduce((sum, item) => sum + item.maxPrice, 0) / totalProducts;
-    const avgPriceRange = data.reduce((sum, item) => sum + item.priceRange, 0) / totalProducts;
-    const maxVariation = Math.max(...data.map(item => item.priceRange));
-    
-    const highVariationCount = data.filter(item => item.priceRange > avgPriceRange).length;
-    
-    const statsContainer = document.getElementById('summary-stats');
-    statsContainer.innerHTML = `
-        <div class="col-md-2">
-            <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                    <h4>${totalProducts}</h4>
-                    <small>Prodotti Confrontati</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-success text-white">
-                <div class="card-body text-center">
-                    <h4>€${avgMinPrice.toFixed(2)}</h4>
-                    <small>Prezzo Min Medio</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-danger text-white">
-                <div class="card-body text-center">
-                    <h4>€${avgMaxPrice.toFixed(2)}</h4>
-                    <small>Prezzo Max Medio</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-warning text-white">
-                <div class="card-body text-center">
-                    <h4>€${avgPriceRange.toFixed(2)}</h4>
-                    <small>Variazione Media</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-info text-white">
-                <div class="card-body text-center">
-                    <h4>€${maxVariation.toFixed(2)}</h4>
-                    <small>Max Variazione</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-secondary text-white">
-                <div class="card-body text-center">
-                    <h4>${highVariationCount}</h4>
-                    <small>Alta Variazione</small>
-                </div>
-            </div>
-        </div>
-    `;
+function applyFilters() {
+    // This function now just calls filterTable for consistency
+    filterTable();
+}
+
+function calculateSummaryStats(data) {
+    // Old summary stats system removed - using new grouped bar chart system
+    return;
 }
 
 function exportComparison() {
@@ -720,118 +569,123 @@ function exportComparison() {
     document.body.removeChild(link);
 }
 
-function initializeCharts() {
-    // Initialize On Site Gross Profit Chart
-    const onSiteCtx = document.getElementById('grossProfitOnSiteChart').getContext('2d');
-    charts.grossProfitOnSite = new Chart(onSiteCtx, {
+// Old chart system removed - only grouped bar chart system is used
+
+// ===== GROUPED BAR CHART SYSTEM =====
+
+// Color palette for restaurants
+const restaurantColors = [
+    { bg: 'rgba(255, 99, 132, 0.8)', border: 'rgb(255, 99, 132)' },
+    { bg: 'rgba(54, 162, 235, 0.8)', border: 'rgb(54, 162, 235)' },
+    { bg: 'rgba(255, 205, 86, 0.8)', border: 'rgb(255, 205, 86)' },
+    { bg: 'rgba(75, 192, 192, 0.8)', border: 'rgb(75, 192, 192)' },
+    { bg: 'rgba(153, 102, 255, 0.8)', border: 'rgb(153, 102, 255)' },
+    { bg: 'rgba(255, 159, 64, 0.8)', border: 'rgb(255, 159, 64)' },
+    { bg: 'rgba(199, 199, 199, 0.8)', border: 'rgb(199, 199, 199)' },
+    { bg: 'rgba(83, 102, 255, 0.8)', border: 'rgb(83, 102, 255)' }
+];
+
+function initializeGroupedBarChart() {
+    if (groupedProfitChart) {
+        groupedProfitChart.destroy();
+    }
+    
+    const ctx = document.getElementById('profit-chart').getContext('2d');
+    
+    groupedProfitChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: [],
-            datasets: [{
-                label: 'Gross Profit On Site (€)',
-                data: [],
-                backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                borderWidth: 1
-            }]
+            datasets: []
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+            interaction: {
+                mode: 'index',
+                intersect: false
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '€' + value.toFixed(2);
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // Initialize Delivery Gross Profit Chart
-    const deliveryCtx = document.getElementById('grossProfitDeliveryChart').getContext('2d');
-    charts.grossProfitDelivery = new Chart(deliveryCtx, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Gross Profit Delivery (€)',
-                data: [],
-                backgroundColor: 'rgba(23, 162, 184, 0.8)',
-                borderColor: 'rgba(23, 162, 184, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '€' + value.toFixed(2);
-                        }
+                title: {
+                    display: true,
+                    text: 'Confronto Gross Profit per Prodotto e Ristorante',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
                     }
-                }
-            }
-        }
-    });
-
-    // Initialize Profit Comparison Chart
-    const comparisonCtx = document.getElementById('profitComparisonChart').getContext('2d');
-    charts.profitComparison = new Chart(comparisonCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [
-                {
-                    label: 'On Site Profit (%)',
-                    data: [],
-                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                    borderColor: 'rgba(40, 167, 69, 1)',
-                    borderWidth: 2,
-                    tension: 0.4
                 },
-                {
-                    label: 'Delivery Profit (%)',
-                    data: [],
-                    backgroundColor: 'rgba(23, 162, 184, 0.2)',
-                    borderColor: 'rgba(23, 162, 184, 1)',
-                    borderWidth: 2,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
                 legend: {
                     display: true,
-                    position: 'top'
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'Prodotto: ' + context[0].label;
+                        },
+                        label: function(context) {
+                            const restaurantName = context.dataset.label;
+                            const profit = context.parsed.y;
+                            const scenario = document.querySelector('input[name="profit-type"]:checked')?.value === 'delivery' ? 'Delivery' : 'On Site';
+                            const profitColor = profit >= 0 ? '🟢' : '🔴';
+                            return `${profitColor} ${restaurantName} (${scenario}): €${profit.toFixed(2)}`;
+                        },
+                        footer: function(context) {
+                            if (context.length > 1) {
+                                const profits = context.map(item => item.parsed.y);
+                                const avgProfit = profits.reduce((sum, p) => sum + p, 0) / profits.length;
+                                return `Media prodotto: €${avgProfit.toFixed(2)}`;
+                            }
+                            return '';
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Gross Profit (€)',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
                     ticks: {
                         callback: function(value) {
-                            return value + '%';
+                            return '€' + value.toFixed(2);
                         }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Prodotti',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -839,100 +693,171 @@ function initializeCharts() {
     });
 }
 
-function updateCharts(filteredData) {
-    if (filteredData.length === 0) {
-        // Clear all charts
-        Object.values(charts).forEach(chart => {
-            chart.data.labels = [];
-            chart.data.datasets.forEach(dataset => dataset.data = []);
-            chart.update();
-        });
+function updateGroupedBarChart(isDelivery = false) {
+    if (!groupedProfitChart) return;
+    
+    const selectedRestaurants = Array.from(document.querySelectorAll('.restaurant-chart-filter:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedRestaurants.length === 0) {
+        groupedProfitChart.data.labels = [];
+        groupedProfitChart.data.datasets = [];
+        groupedProfitChart.update();
         return;
     }
-
-    // We need to parse data from the table since we don't have structured data in JS
-    // This is a simplified approach - for now we'll aggregate basic profit data
-    const restaurantData = {};
     
-    filteredData.forEach(item => {
-        const row = item.element;
-        const profitItems = row.querySelectorAll('.profit-item');
+    const productData = {};
+    const restaurantNames = {};
+    
+    comparisonData.forEach(item => {
+        const filteredListings = item.listings.filter(listing => 
+            selectedRestaurants.includes(listing.restaurantId) && listing.isAvailable
+        );
         
-        profitItems.forEach(profitItem => {
-            const restaurantName = profitItem.querySelector('strong').textContent;
+        if (filteredListings.length > 0) {
+            productData[item.productName] = {};
             
-            // Extract profit values
-            const profitValues = profitItem.querySelectorAll('.fw-bold');
-            if (profitValues.length >= 2) {
-                const onSiteProfit = parseFloat(profitValues[0].textContent.replace('€', ''));
-                const deliveryProfit = parseFloat(profitValues[1].textContent.replace('€', ''));
-                
-                // Extract percentages
-                const percentages = profitItem.querySelectorAll('small');
-                let onSitePercent = 0, deliveryPercent = 0;
-                percentages.forEach(small => {
-                    const text = small.textContent;
-                    if (text.includes('%')) {
-                        const percent = parseFloat(text.replace('%', ''));
-                        if (small.closest('.col-6').previousElementSibling === null) {
-                            onSitePercent = percent;
-                        } else {
-                            deliveryPercent = percent;
-                        }
-                    }
-                });
-                
-                if (!restaurantData[restaurantName]) {
-                    restaurantData[restaurantName] = {
-                        onSiteProfits: [],
-                        deliveryProfits: [],
-                        onSitePercents: [],
-                        deliveryPercents: []
-                    };
-                }
-                
-                restaurantData[restaurantName].onSiteProfits.push(onSiteProfit);
-                restaurantData[restaurantName].deliveryProfits.push(deliveryProfit);
-                restaurantData[restaurantName].onSitePercents.push(onSitePercent);
-                restaurantData[restaurantName].deliveryPercents.push(deliveryPercent);
-            }
+            filteredListings.forEach(listing => {
+                const profit = isDelivery ? listing.deliveryProfit : listing.localProfit;
+                productData[item.productName][listing.restaurantId] = profit;
+                restaurantNames[listing.restaurantId] = listing.restaurantName;
+            });
+        }
+    });
+    
+    const datasets = [];
+    const productNames = Object.keys(productData);
+    
+    selectedRestaurants.forEach((restaurantId, index) => {
+        const restaurantName = restaurantNames[restaurantId];
+        if (!restaurantName) return;
+        
+        const data = productNames.map(productName => {
+            return productData[productName][restaurantId] || 0;
+        });
+        
+        const colorIndex = index % restaurantColors.length;
+        
+        datasets.push({
+            label: restaurantName,
+            data: data,
+            backgroundColor: restaurantColors[colorIndex].bg,
+            borderColor: restaurantColors[colorIndex].border,
+            borderWidth: 1,
+            borderRadius: 2,
+            maxBarThickness: 40
         });
     });
-
-    // Calculate averages
-    const restaurants = Object.keys(restaurantData);
-    const onSiteAvgs = restaurants.map(name => {
-        const profits = restaurantData[name].onSiteProfits;
-        return profits.length > 0 ? profits.reduce((sum, p) => sum + p, 0) / profits.length : 0;
-    });
-    const deliveryAvgs = restaurants.map(name => {
-        const profits = restaurantData[name].deliveryProfits;
-        return profits.length > 0 ? profits.reduce((sum, p) => sum + p, 0) / profits.length : 0;
-    });
-    const onSitePercentAvgs = restaurants.map(name => {
-        const percents = restaurantData[name].onSitePercents;
-        return percents.length > 0 ? percents.reduce((sum, p) => sum + p, 0) / percents.length : 0;
-    });
-    const deliveryPercentAvgs = restaurants.map(name => {
-        const percents = restaurantData[name].deliveryPercents;
-        return percents.length > 0 ? percents.reduce((sum, p) => sum + p, 0) / percents.length : 0;
-    });
-
-    // Update On Site Chart
-    charts.grossProfitOnSite.data.labels = restaurants;
-    charts.grossProfitOnSite.data.datasets[0].data = onSiteAvgs;
-    charts.grossProfitOnSite.update();
-
-    // Update Delivery Chart
-    charts.grossProfitDelivery.data.labels = restaurants;
-    charts.grossProfitDelivery.data.datasets[0].data = deliveryAvgs;
-    charts.grossProfitDelivery.update();
-
-    // Update Comparison Chart
-    charts.profitComparison.data.labels = restaurants;
-    charts.profitComparison.data.datasets[0].data = onSitePercentAvgs;
-    charts.profitComparison.data.datasets[1].data = deliveryPercentAvgs;
-    charts.profitComparison.update();
+    
+    groupedProfitChart.data.labels = productNames;
+    groupedProfitChart.data.datasets = datasets;
+    
+    const scenario = isDelivery ? 'Delivery' : 'On Site';
+    groupedProfitChart.options.plugins.title.text = `Confronto Gross Profit ${scenario} per Prodotto e Ristorante`;
+    
+    groupedProfitChart.update();
 }
+
+function toggleChartScenario() {
+    const isDelivery = document.querySelector('input[name="profit-type"]:checked')?.value === 'delivery';
+    updateGroupedBarChart(isDelivery);
+}
+
+function selectAllRestaurantsForChart() {
+    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
+        cb.checked = true;
+    });
+    toggleChartScenario();
+}
+
+function clearAllRestaurantsForChart() {
+    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
+        cb.checked = false;
+    });
+    toggleChartScenario();
+}
+
+function sortChartByProfit() {
+    if (!groupedProfitChart || !groupedProfitChart.data.labels.length) return;
+    
+    const productProfits = groupedProfitChart.data.labels.map((label, index) => {
+        const profits = groupedProfitChart.data.datasets.map(dataset => dataset.data[index] || 0);
+        const avgProfit = profits.reduce((sum, p) => sum + p, 0) / profits.length;
+        return { label, avgProfit, index };
+    });
+    
+    productProfits.sort((a, b) => b.avgProfit - a.avgProfit);
+    
+    const newLabels = productProfits.map(p => p.label);
+    const newDatasets = groupedProfitChart.data.datasets.map(dataset => ({
+        ...dataset,
+        data: productProfits.map(p => dataset.data[p.index])
+    }));
+    
+    groupedProfitChart.data.labels = newLabels;
+    groupedProfitChart.data.datasets = newDatasets;
+    groupedProfitChart.update();
+}
+
+function sortChartByName() {
+    if (!groupedProfitChart || !groupedProfitChart.data.labels.length) return;
+    
+    const sortedIndices = groupedProfitChart.data.labels
+        .map((label, index) => ({ label, index }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+        .map(item => item.index);
+    
+    const newLabels = sortedIndices.map(i => groupedProfitChart.data.labels[i]);
+    const newDatasets = groupedProfitChart.data.datasets.map(dataset => ({
+        ...dataset,
+        data: sortedIndices.map(i => dataset.data[i])
+    }));
+    
+    groupedProfitChart.data.labels = newLabels;
+    groupedProfitChart.data.datasets = newDatasets;
+    groupedProfitChart.update();
+}
+
+function exportChartData() {
+    if (!groupedProfitChart || !groupedProfitChart.data.labels.length) {
+        alert('Nessun dato da esportare nel grafico');
+        return;
+    }
+    
+    const scenario = document.querySelector('input[name="profit-type"]:checked')?.value === 'delivery' ? 'Delivery' : 'OnSite';
+    
+    let csv = `Prodotto,${groupedProfitChart.data.datasets.map(d => d.label).join(',')}\n`;
+    
+    groupedProfitChart.data.labels.forEach((product, productIndex) => {
+        const row = [product];
+        groupedProfitChart.data.datasets.forEach(dataset => {
+            row.push((dataset.data[productIndex] || 0).toFixed(2));
+        });
+        csv += row.join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `gross_profit_${scenario}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Add the missing event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[name="profit-type"]').forEach(radio => {
+        radio.addEventListener('change', toggleChartScenario);
+    });
+    
+    document.querySelectorAll('.restaurant-chart-filter').forEach(cb => {
+        cb.addEventListener('change', toggleChartScenario);
+    });
+});
+
 </script>
+
 {% endblock %}

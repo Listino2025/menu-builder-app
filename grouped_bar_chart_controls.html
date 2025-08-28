@@ -1,0 +1,126 @@
+<!-- Grouped Bar Chart Controls -->
+<div class="card mb-4" id="charts-section" style="display: none;">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-bar-chart me-2"></i>Analisi Profitti per Prodotto e Ristorante
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleCharts()">
+                <i class="bi bi-eye-slash" id="charts-toggle-icon"></i>
+                <span id="charts-toggle-text">Nascondi Grafici</span>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        
+        <!-- Chart Controls -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Scenario di Profitto:</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="profit-type" id="profit-onsite" value="onsite" checked>
+                    <label class="btn btn-outline-primary" for="profit-onsite">
+                        <i class="bi bi-shop me-1"></i>On Site
+                    </label>
+                    <input type="radio" class="btn-check" name="profit-type" id="profit-delivery" value="delivery">
+                    <label class="btn btn-outline-info" for="profit-delivery">
+                        <i class="bi bi-truck me-1"></i>Delivery
+                    </label>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Selezione Ristoranti:</label>
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllRestaurantsForChart()">
+                        <i class="bi bi-check-all me-1"></i>Tutti
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="clearAllRestaurantsForChart()">
+                        <i class="bi bi-x-circle me-1"></i>Nessuno
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Ordinamento:</label>
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sortChartByProfit()">
+                        <i class="bi bi-sort-numeric-down me-1"></i>Per Profitto
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sortChartByName()">
+                        <i class="bi bi-sort-alpha-down me-1"></i>Per Nome
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Restaurant Selection -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <label class="form-label fw-bold">Ristoranti da Visualizzare:</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for restaurant in restaurants %}
+                    <div class="form-check">
+                        <input class="form-check-input restaurant-chart-filter" 
+                               type="checkbox" 
+                               value="{{ restaurant.id }}" 
+                               id="chart-restaurant-{{ restaurant.id }}" 
+                               checked>
+                        <label class="form-check-label" for="chart-restaurant-{{ restaurant.id }}">
+                            <small>{{ restaurant.name }}</small>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chart Canvas -->
+        <div class="row">
+            <div class="col-12">
+                <div class="chart-container" style="position: relative; height: 400px; margin-top: 20px;">
+                    <canvas id="profit-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chart Actions -->
+        <div class="row mt-3">
+            <div class="col-12 text-end">
+                <button class="btn btn-sm btn-outline-info" onclick="exportChartData()">
+                    <i class="bi bi-download me-1"></i>Esporta Dati Grafico
+                </button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+// Toggle charts visibility
+let chartsVisible = false;
+
+function toggleCharts() {
+    const chartsSection = document.getElementById('charts-section');
+    const toggleIcon = document.getElementById('charts-toggle-icon');
+    const toggleText = document.getElementById('charts-toggle-text');
+    
+    if (chartsVisible) {
+        chartsSection.style.display = 'none';
+        toggleIcon.className = 'bi bi-eye';
+        toggleText.textContent = 'Mostra Grafici';
+        chartsVisible = false;
+    } else {
+        chartsSection.style.display = 'block';
+        toggleIcon.className = 'bi bi-eye-slash';
+        toggleText.textContent = 'Nascondi Grafici';
+        chartsVisible = true;
+        
+        // Initialize chart if not already done
+        if (!groupedProfitChart) {
+            initializeGroupedBarChart();
+            toggleChartScenario();
+        }
+    }
+}
+</script>
