@@ -145,6 +145,57 @@ class Product(db.Model):
         self.food_paper_cost_total = round(total_cost, 2)
         return self.food_paper_cost_total
     
+    def update_dependent_menus(self):
+        """Update all menus that use this product as base"""
+        if self.product_type == 'product':
+            dependent_menus = Product.query.filter_by(
+                product_type='menu', 
+                base_product_id=self.id,
+                is_active=True
+            ).all()
+            
+            updated_menus = []
+            for menu in dependent_menus:
+                old_cost = menu.food_paper_cost_total
+                new_cost = menu.recalculate_cost()
+                if abs(float(old_cost or 0) - float(new_cost)) > 0.001:
+                    updated_menus.append(menu.name)
+            
+            return updated_menus
+        return []
+    
+    @staticmethod
+    def recalculate_all_costs():
+        """Recalculate and update F&P costs for all products in database"""
+        updated_count = 0
+        
+        # First update all regular products
+        products = Product.query.filter_by(product_type='product').all()
+        for product in products:
+            old_cost = product.food_paper_cost_total
+            new_cost = product.recalculate_cost()
+            if abs(float(old_cost or 0) - float(new_cost)) > 0.001:  # If cost changed
+                updated_count += 1
+                print(f"Updated {product.name} ({product.product_code}): €{old_cost or 0:.3f} -> €{new_cost:.3f}")
+        
+        # Then update menus (after products are updated)
+        menus = Product.query.filter_by(product_type='menu').all()
+        for menu in menus:
+            old_cost = menu.food_paper_cost_total
+            new_cost = menu.recalculate_cost()
+            if abs(float(old_cost or 0) - float(new_cost)) > 0.001:  # If cost changed
+                updated_count += 1
+                print(f"Updated {menu.name} ({menu.product_code}): €{old_cost or 0:.3f} -> €{new_cost:.3f}")
+        
+        try:
+            db.session.commit()
+            print(f"Successfully updated {updated_count} products with new F&P costs")
+            return updated_count
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating product costs: {str(e)}")
+            raise e
+    
     def __repr__(self):
         return f'<Product {self.name}>'
 
@@ -330,7 +381,7 @@ class ProductListing(db.Model):
     
     def get_delivery_markup(self):
         """Calculate delivery markup amount"""
-        return float(self.delivery_price - self.local_price)
+        return float(self.delivery_price) - float(self.local_price)
     
     def get_delivery_markup_percent(self):
         """Calculate delivery markup percentage"""
@@ -339,16 +390,16 @@ class ProductListing(db.Model):
         return 0
     
     def get_total_food_paper_cost(self):
-        """Calculate total F&P cost using product's method"""
-        return self.product.calculate_fp_cost()
+        """Get total F&P cost from product's database value"""
+        return float(self.product.food_paper_cost_total or 0)
     
     def get_gross_profit_local(self):
         """Calculate gross profit for local price"""
-        return float(self.local_price - self.get_total_food_paper_cost())
+        return float(self.local_price) - self.get_total_food_paper_cost()
     
     def get_gross_profit_delivery(self):
         """Calculate gross profit for delivery price"""
-        return float(self.delivery_price - self.get_total_food_paper_cost())
+        return float(self.delivery_price) - self.get_total_food_paper_cost()
     
     def get_gross_profit_margin_local(self):
         """Calculate gross profit margin percentage for local price"""

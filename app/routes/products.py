@@ -198,8 +198,8 @@ def create_menu():
             db.session.add(menu)
             db.session.flush()
             
-            # Calculate F&P cost using the method from Product model
-            menu.food_paper_cost_total = menu.calculate_fp_cost()
+            # Calculate and update F&P cost in database
+            menu.recalculate_cost()
             
             db.session.commit()
             

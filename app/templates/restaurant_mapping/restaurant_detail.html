@@ -192,10 +192,9 @@
                                         </td>
                                         <td>
                                             {% if item.product.product_type == 'menu' %}
-                                                {% set total_fp_cost = (item.product.food_paper_cost_total or 0) + (item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0) %}
-                                                <strong class="text-danger">€{{ "%.3f"|format(total_fp_cost) }}</strong>
+                                                <strong class="text-danger">€{{ "%.3f"|format(item.product.food_paper_cost_total or 0) }}</strong>
                                                 <br><small class="text-muted">
-                                                    Base: €{{ "%.3f"|format(item.product.food_paper_cost_total or 0) }}
+                                                    Base: €{{ "%.3f"|format(item.product.base_product.food_paper_cost_total if item.product.base_product else 0) }}
                                                     {% if item.product.fries_fp_cost or item.product.drink_fp_cost %}
                                                     <br>Extras: €{{ "%.3f"|format((item.product.fries_fp_cost or 0) + (item.product.drink_fp_cost or 0)) }}
                                                     {% endif %}
